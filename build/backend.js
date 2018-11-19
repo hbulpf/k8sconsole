@@ -1,6 +1,7 @@
 import del from 'del';
 import fs from 'fs';
 import gulp from 'gulp';
+import lodash from 'lodash';
 import path from 'path';
 
 import config from './config';
@@ -15,10 +16,32 @@ gulp.task('backend', ['package-backend'], function (doneFn) {
             'build',
             // Install dependencies to speed up subsequent compilations.
             '-i',
+            // record version info into src/app/backend/client.Version
+            '-ldflags',
+            config.recordVersionExpression,
             '-o',
             path.join(config.paths.serve, config.backend.binaryName),
             config.backend.mainPackageName,
         ], doneFn);
+});
+
+/**
+ * Compiles backend application in production mode for the default os 'linux' and places the
+ * binary in the dist directory.
+ */
+gulp.task('backend:prod', ['package-backend', 'clean-dist'], function() {
+    let outputBinaryPath = path.join(config.paths.dist, config.backend.binaryName);
+    return backendProd([[outputBinaryPath, config.os.default]]);
+});
+
+/**
+ * Compiles backend application in production mode for all OS and places the
+ * binary in the dist directory.
+ */
+gulp.task('backend:prod:cross', ['package-backend', 'clean-dist'], function() {
+    let outputBinaryPaths =
+        config.paths.distCross.map((dir) => path.join(dir, config.backend.binaryName));
+    return backendProd(lodash.zip(outputBinaryPaths, config.os.list));
 });
 
 /**
@@ -56,3 +79,41 @@ gulp.task('link-vendor', ['package-backend-source'], function (doneFn) {
         }
     });
 });
+
+function backendProd(outputBinaryPathsAndOSs) {
+    let promiseFn = (path, os) => {
+        return (resolve, reject) => {
+            goCommand(
+                [
+                    'build',
+                    '-a',
+                    '-installsuffix',
+                    'cgo',
+                    '-ldflags',
+                    `${config.recordVersionExpression} -w -s`,
+                    '-o',
+                    path,
+                    `${config.backend.mainPackageName}-${os}-${config.arch.default}`,
+                ],
+                (err) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                },
+                {
+                    // Disable cgo package
+                    CGO_ENABLED: '0',
+                    GOOS: os,
+                    GOARCH: config.arch.default,
+                });
+        };
+    };
+
+    let goCommandPromises = outputBinaryPathsAndOSs.map(
+        (pathAndOS) => new Promise(promiseFn(pathAndOS[0], pathAndOS[1]))
+    );
+
+    return Promise.all(goCommandPromises);
+}

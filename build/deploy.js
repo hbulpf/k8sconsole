@@ -2,7 +2,7 @@ import child from 'child_process';
 import gulp from 'gulp';
 import path from 'path';
 
-import conf from './config'
+import conf from './config';
 
 function spawnDockerProcess(args, doneFn) {
     let dockerTask = child.spawn('docker', args);

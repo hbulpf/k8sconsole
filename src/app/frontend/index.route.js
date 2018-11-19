@@ -5,5 +5,6 @@
  * @ngInject
  */
 export default function routerConfig($urlRouterProvider) {
-    $urlRouterProvider.otherwise('');
+    // When no state is matched by an URL, redirect to default one.
+    $urlRouterProvider.otherwise('/');
 }

@@ -1,14 +1,30 @@
-# Travis CI system configuration file.
-#
-# Overview on how to customize the configuration is located at:
-# http://docs.travis-ci.com/user/customizing-the-build/
-
-sudo: false
-# Use Node.js as primary language because Gulp is the build system used in the project.
+sudo: required
+dist: trusty
+group: edge
 language: node_js
+cache:
+  directories:
+  - node_modules
+  - ".tools"
+install:
+- npm install
 before_script:
-  # Install dependencies required to setup the build.
-  - npm install -g bower
-  - npm install -g gulp
-  - bower install
-script: gulp build
+- eval "$(gimme 1.10.2)"
+script:
+- "./node_modules/.bin/gulp build:cross"
+branches:
+  only:
+  - master
+deploy:
+  provider: releases
+  api_key:
+    secure: gjdbvppA2JV8CoQjsuZUEJhmjrPQJ3GUR0V+/mks2K9lXeG/YBf33gryUIrgqDh9Lb9lpbiLTaV2b1rT69aebzsD9dehCAWR8YC2bV2F3HSp384oTNzVWiR8qiCcpkcBy6NWbUBRgoEavYoRuW3et/6nW//MnvYqR7Hb3sJ7GFUIOy7sAycA6D4GWGRitR7a8uo9XydIuU6+XW9H9GHTOn4qWi5E5B5nJslYOeneV9PJhTqgTclYBmd6ZrQyND5bmTzBDeQjCZiypdUQNc782tmKBBI1wTMBmVzORMZLfSgA7jfTf5P9erzGha0J1KSlcL6bKUHIv5RUT2lT2J6wr3t4wFb8akPHnqpjx87MGq6EMSwu0C/EMO71hxLmTA0vjAsaFFiZqaqZV3Re+GZi0sxf9+cYY+B1w6X0Qvp/L5j63NGqQ77Z/apgA3lZm3HKTpmUoxQxUZrUq9rPtyrtOZOUBK9/IjugW4+EM3KwlkQ+WI6NMUEpfh5Byf78Oi15vU6RXWiEnAdC5e4pgaNa9b9V56I7MsFIvJoaLcGgjx8C2FoJ+vFyICQSgHeTLK/dhZmKD55Q9+qEnOYlIv4xusFbcGvdMYz1AXEsoSwBOt2L/92Mdb/hfBSkm9cXrhM7e9SdA9+9Gee1XJbYbjNLRqqMzuJQGLAPBAdfTTyhZ10=
+  file:
+    - dist/linux/*
+    - dist/windows/*
+    - dist/darwin/*
+  skip_cleanup: true
+  on:
+    repo: wzt3309/k8sconsole
+    tags: true
+

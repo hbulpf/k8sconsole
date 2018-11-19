@@ -1,0 +1,39 @@
+package configmap
+
+import (
+	"github.com/golang/glog"
+	"github.com/wzt3309/k8sconsole/src/app/backend/api"
+	"k8s.io/api/core/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+)
+
+// ConfigMapDetail API resource provides mechanisms to inject containers with configuration data while keeping
+// containers agnostic of Kubernetes
+type ConfigMapDetail struct {
+	ObjectMeta api.ObjectMeta `json:"objectMeta"`
+	TypeMeta   api.TypeMeta   `json:"typeMeta"`
+
+	// Data contains the configuration data.
+	// Each key must be a valid DNS_SUBDOMAIN with an optional leading dot.
+	Data map[string]string `json:"data,omitempty"`
+}
+
+func GetConfigMapDetail(client kubernetes.Interface, namespace, name string) (*ConfigMapDetail, error) {
+	glog.Infof("Getting detail %s config map in %s namespace", name, namespace)
+
+	rawConfigMap, err := client.CoreV1().ConfigMaps(namespace).Get(name, metaV1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return getConfigMapDetail(rawConfigMap), nil
+}
+
+func getConfigMapDetail(rawConfigMap *v1.ConfigMap) *ConfigMapDetail {
+	return &ConfigMapDetail{
+		ObjectMeta: api.NewObjectMeta(rawConfigMap.ObjectMeta),
+		TypeMeta:   api.NewTypeMeta(api.ResourceKindConfigMap),
+		Data:       rawConfigMap.Data,
+	}
+}

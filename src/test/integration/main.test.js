@@ -2,7 +2,7 @@ import {MainPage} from './main.po';
 
 
 describe('The main view', function () {
-    var page;
+    let page;
 
     beforeEach(function () {
         browser.get('/index.html');
@@ -10,6 +10,6 @@ describe('The main view', function () {
     });
 
     it('should do something', function() {
-        expect(page.h1El.getText()).toBe('\'Allo, \'Allo!');
+        expect(page.header.getText()).toContain('page');
     });
 });

@@ -29,11 +29,11 @@ function getBackendArgs(mode) {
     let args = [];
 
     if (mode === config.build.prod) {
-        console.log('backend in prod mode')
+        console.log('backend in prod mode');
     }
 
     if (mode === config.build.dev) {
-        console.log('backend in dev mode')
+        console.log('backend in dev mode');
     }
 
     return args;
@@ -108,7 +108,7 @@ gulp.task('spawn-backend', ['backend', 'kill-backend'], function () {
     runningBackendProcess.on("exit", function () {
         // Mark there is not backend process running anymore.
         runningBackendProcess = null;
-    })
+    });
 });
 
 /**
@@ -140,7 +140,7 @@ gulp.task('kill-backend', function (doneFn) {
             doneFn();
         });
 
-        runningBackendProcess.kill()
+        runningBackendProcess.kill();
     } else {
         doneFn();
     }

@@ -7,6 +7,8 @@ package-lock.json
 .sass-cache/
 .tmp/
 dist/
+.tools/
+coverage/
 
 ## IDE specific files
 # Intellij

@@ -1,6 +1,6 @@
 require('babel-core/register');
-var conf = require('./config');
-var path = require('path');
+let conf = require('./config').default;
+let path = require('path');
 
 
 exports.config = {
@@ -11,4 +11,6 @@ exports.config = {
     baseUrl: 'http://localhost:3000',
 
     specs: [path.join(conf.paths.integrationTest, '**/*.js')],
+
+    framework: 'jasmine',
 };

@@ -1,0 +1,154 @@
+#################################################### Test  AUTH ###################################################
+### Test /api/v1/login
+POST http://localhost:9090/api/v1/login
+Content-Type: application/json
+Cache-Control: no-cache
+
+{
+  "Token": "test-token"
+}
+
+################################################### Test  csrfToken ################################################
+### Test /api/v1/csrftoken/{action}
+GET http://localhost:9090/api/v1/csrftoken/get
+Content-Type: application/json
+Cache-Control: no-cache
+
+################################################### Test CRUD POD ###################################################
+### Test /api/v1/pod
+GET http://localhost:9090/api/v1/pod
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /api/v1/pod/{namespace}
+GET http://localhost:9090/api/v1/pod/default
+Accept: application/json
+Cache-Control: no-cache
+
+################################################### Test CRUD Node ###################################################
+### Test /api/v1/node
+GET http://localhost:9090/api/v1/node
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /api/v1/node/{name}
+GET http://localhost:9090/api/v1/node/minikube
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /api/v1/node/{name}/event
+GET http://localhost:9090/api/v1/node/minikube/event
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /api/v1/node/{name}/pod
+GET http://localhost:9090/api/v1/node/minikube/pod?filterBy=name,kube-&sortBy=d,name&itemsPerPage=2&page=1
+Accept: application/json
+Cache-Control: no-cache
+
+################################################# Test CRUD Namespace ################################################
+### Test /api/v1/namespace
+POST http://localhost:9090/api/v1/namespace
+Content-Type: application/json
+Cache-Control: no-cache
+
+{
+  "name": "test"
+}
+
+### Test /api/v1/namespace
+GET http://localhost:9090/api/v1/namespace?filterBy=name,kube-
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /api/v1/namespace/{name}
+GET http://localhost:9090/api/v1/namespace/kube-system
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /api/v1/namespace/{name}/event
+GET http://localhost:9090/api/v1/namespace/kube-system/event
+Accept: application/json
+Cache-Control: no-cache
+
+################################################# Test CRUD Secret ################################################
+### Test /api/v1/secret
+GET http://localhost:9090/api/v1/secret?itemsPerPage=2&page=1
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /api/v1/secret/{namespace}
+GET http://localhost:9090/api/v1/secret/default
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /api/v1/secret/{namespace}/{name}
+GET http://localhost:9090/api/v1/secret/default/default-token-n8tj4
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /api/v1/secret
+# .dockercfg format
+#{
+#    "docker-register-server": {
+#          "username":"Your Username",
+#          "password":"Your Password",
+#          "email":" ",
+#          "auth":"base64(Username: password)"
+#        }
+#}
+POST http://localhost:9090/api/v1/secret
+Content-Type: application/json
+Cache-Control: no-cache
+
+{
+  "name": "my-register-server",
+  "namespace": "default",
+  "data": "base64(.dockercfg)"
+}
+
+################################################# Test CRUD ConfigMap ################################################
+### Test /api/v1/configmap
+GET http://localhost:9090/api/v1/configmap
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /api/v1/configmap/{namespace}
+GET http://localhost:9090/api/v1/configmap/kube-system
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /api/v1/configmap/{namespace}/{configmap}
+GET http://localhost:9090/api/v1/configmap/kube-public/cluster-info
+Accept: application/json
+Cache-Control: no-cache
+
+############################################# Test CRUD Persistent Volume ############################################
+### Test /api/v1/persistentvolume
+GET http://localhost:9090/api/v1/persistentvolume
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /api/v1/persistentvolume/{persistentvolume}
+# Note. pv dont have namespace
+GET http://localhost:9090/api/v1/persistentvolume/test
+Accept: application/json
+Cache-Control: no-cache
+
+########################################## Test CRUD Persistent Volume Claim #########################################
+### Test /api/v1/persistentvolumeclaim
+GET http://localhost:9090/api/v1/persistentvolumeclaim
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /api/v1/persistentvolumeclaim/{namespace}
+GET http://localhost:9090/api/v1/persistentvolumeclaim/default
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /api/v1/persistentvolumeclaim/{namespace}/{name}
+GET http://localhost:9090/api/v1/persistentvolumeclaim/default/test
+Accept: application/json
+Cache-Control: no-cache
+
+###

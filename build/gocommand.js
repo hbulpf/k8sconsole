@@ -145,7 +145,7 @@ function checkGovendor() {
                     'Please run "npm install" in the base directory of the project.'));
                 return;
             }
-            deferred.resolve()
+            deferred.resolve();
         });
     return deferred.promise;
 }

@@ -9,6 +9,6 @@ export class MainController {
 
         $timeout(() => {
             this.testValue = 8;
-        }, 4000)
+        }, 4000);
     }
 }

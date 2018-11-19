@@ -1,0 +1,17 @@
+apiVersion: kubeadm.k8s.io/v1alpha1
+kind: MasterConfiguration
+api:
+  advertiseAddress: 0.0.0.0
+  bindPort: 8443
+kubernetesVersion: v1.10.0
+imageRepository: registry.cn-hangzhou.aliyuncs.com/google_containers
+certificatesDir: /var/lib/localkube/certs/
+networking:
+  serviceSubnet: 10.96.0.0/12
+etcd:
+  dataDir: /data/minikube
+  extraArgs:
+    'listen-peer-urls': 'http://127.0.0.1:2380'
+nodeName: minikube
+apiServerExtraArgs:
+  admission-control: "Initializers,NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota"

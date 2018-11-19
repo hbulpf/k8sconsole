@@ -1,6 +1,8 @@
+import chromeModule from './chrome/chrome.module';
+import indexConfig from './index.config';
 import mainModule from './main/main.module';
 import routerConfig from './index.route';
-import chromeModule from './chrome/chrome.module';
+import serviceListModule from './servicelist/servicelist.module';
 
 export default angular.module(
     'k8sconsole',
@@ -14,9 +16,7 @@ export default angular.module(
         'ui.router',
         mainModule.name,
         chromeModule.name,
+        serviceListModule.name,
     ])
-    // .config(config)
-    .config(routerConfig)
-    // .run(runBlock)
-    // .controller('RouterController', RouterController)
-    // .controller('MainController', MainController);
+    .config(indexConfig)
+    .config(routerConfig);

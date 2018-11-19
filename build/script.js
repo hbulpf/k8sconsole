@@ -56,7 +56,6 @@ function createScriptsStream(throwError) {
         };
         let compiled = gulp.src(path.join(config.paths.frontendSrc, 'index.module.js'))
                             .pipe(webpackStream(webpackOptions));
-        
         if (!throwError) {
             compiled = compiled.on('error', (err) => {
                 compiled.emit('end');
