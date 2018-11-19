@@ -92,8 +92,8 @@ function backendProd(outputBinaryPathsAndOSs) {
                     '-ldflags',
                     `${config.recordVersionExpression} -w -s`,
                     '-o',
-                    path,
-                    `${config.backend.mainPackageName}-${os}-${config.arch.default}`,
+                    `${path}-${os}-${config.arch.default}`,
+                    config.backend.mainPackageName,
                 ],
                 (err) => {
                     if (err) {
