@@ -33,6 +33,6 @@ deploy:
     - ./dist/darwin/k8sconsole-darwin-amd64
   skip_cleanup: true
   on:
-    repo: wzt3309/k8sconsole
+    repo: hbulpf/k8sconsole
     tags: true
 
