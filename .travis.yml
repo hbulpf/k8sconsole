@@ -13,6 +13,7 @@ cache:
 
 install:
 - chmod +x build/*.sh
+- npm install
 
 before_script:
 - eval "$(gimme 1.10.2)"
