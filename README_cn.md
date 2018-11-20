@@ -11,3 +11,7 @@
 	--insecure-port {未被占用的本地端口}
 ./k8sconsole-darwin-amd64 --apiserver-host http://127.0.0.1:61987 --insecure-port 63453
 ```
+
+
+----
+@基于容器的弹性大数据项目
