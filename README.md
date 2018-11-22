@@ -48,7 +48,7 @@ to test rest apis.
 #### Use curl
 like `curl -X GET "http://localhost:9090/api/v1/node?filterBy=name%2Cminikube&sortBy=d%2Cname&itemsPerPage=1&page=1" -H "accept: application/json"`
 
-### Use vscode
+#### Use vscode
 In vscode open file `./example/k8sconsole-api.http` and it will auto install plugin [vscode-restclient](https://github.com/Huachao/vscode-restclient)
 for test apis.
 
