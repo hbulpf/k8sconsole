@@ -28,7 +28,7 @@ type PersistentVolumeClaim struct {
 	Status       string                          `json:"status"`
 	Volume       string                          `json:"volume"`
 	Capacity     v1.ResourceList                 `json:"capacity"`
-	AccessModes  []v1.PersistentVolumeAccessMode `json:"accessMode"`
+	AccessModes  []v1.PersistentVolumeAccessMode `json:"accessModes"`
 	StorageClass *string                         `json:"storageClass"`
 }
 
