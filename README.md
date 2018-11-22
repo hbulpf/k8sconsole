@@ -1,15 +1,36 @@
-# k8sconsole
-A web ui which extends kubernetes dashboard.
+# K8sConsole / [中文版](./README_cn.md)
+> A web ui which extends kubernetes dashboard
+
+## Quick Start
+1. [Get binary file](https://github.com/wzt3309/k8sconsole/releases)
+2. Start [Kubernetes](https://github.com/kubernetes/kubernetes) or [MiniKube](https://github.com/kubernetes/minikube)
+3. Start [K8sConsole](https://github.com/hbulpf/k8sconsole)
+
+```
+# When you use macOS
+./k8sconsole-darwin-amd64 \
+	--apiserver-host {api url of Kubernetes cluster} \
+	--insecure-port {a local port not in use, default is 9090 }
+./k8sconsole-darwin-amd64 --apiserver-host http://127.0.0.1:61987 --insecure-port 63453
+
+# When you use linux
+./k8sconsole-linux-amd64 --apiserver-host http://127.0.0.1:61987 --insecure-port 63453
+
+# When you use windows
+k8sconsole-windows-amd64.exe --apiserver-host http://127.0.0.1:61987 --insecure-port 63453
+```
 
 # k8sconsole API
 ## Online
 See online api docs in [k8sconsole-go](https://app.swaggerhub.com/apis/ztwang/k8sconsole-go/0.0.1).
+
 ## Local test
 ### Step 1. Start a kubernetes cluster
 We use minikube to start a local kubernetes cluster v1.10.0.
 > Required. You need to install docker before `./build/docker-install.sh` (This will install docker 17.03.02-ce)
 
 `./build/minikube.sh`
+
 ### Step 2. Start backend
 > Install backend from [releases](https://github.com/wzt3309/k8sconsole/releases)
 
