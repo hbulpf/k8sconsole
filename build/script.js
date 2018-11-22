@@ -56,7 +56,6 @@ function createScriptsStream(throwError) {
         };
         let compiled = gulp.src(path.join(config.paths.frontendSrc, 'index.module.js'))
                             .pipe(webpackStream(webpackOptions));
-        
         if (!throwError) {
             compiled = compiled.on('error', (err) => {
                 compiled.emit('end');
@@ -162,7 +161,7 @@ function compileES6(translation) {
         // ---- OUTPUT ----
         generate_exports: true,
         export_local_property_definitions: true,
-        // TODO: enable once all type checks are fixed
+        // TODO(wzt3309): enable once all type checks are fixed
         // new_type_inf: true,
 
         // ---- WARNING AND ERROR MANAGEMENT ----
@@ -233,7 +232,7 @@ gulp.task('scripts:prod', ['angular-templates', 'generate-xtbs'], function(doneF
         }
     });
 
-    // TODO (taimir) : do not run the tasks sequentially once
+    // TODO (wzt3309) : do not run the tasks sequentially once
     // gulp-closure-compiler can be run in parallel
     async.series(streams, doneFn);
 });

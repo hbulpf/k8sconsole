@@ -1,0 +1,2552 @@
+swagger: "2.0"
+info:
+  description: |
+    # This is a `k8sconsole` api docs
+    `K8sconsole` is a web console designed to manage kubernetes resources,
+    just like the command-line tool `kubectl`.
+
+    We can use apis list below to `get`/`post`/`delete` kubernetes resources.
+
+  version: v0.0.1
+  title: K8sconsole Api
+  contact:
+    email: wzt3309@gmail.com
+
+host: localhost:9090
+basePath: /api/v1
+schemes:
+  - http
+  # not ready
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+tags:
+- name: auth
+  description: Authertication & Authorization
+- name: csrf
+  description: Defense CSRF
+- name: pod
+  description: CRUD Operations of Pods
+- name: node
+  description: CRUD Operations of Nodes
+- name: namespace
+  description: CRUD Operations of Namespaces
+- name: secret
+  description: CRUD Operations of secret
+- name: configmap
+  description: CRUD Operations of ConfigMap
+- name: persistent-volume
+  description: CRUD Operations of Persistent Volume
+- name: persistent-volume-claim
+  description: CRUD Operations of Persistent Volume Claim
+
+paths:
+  #================================================= auth ==================================================#
+  /login:
+    post:
+      tags:
+      - auth
+      summary: Login k8sconsole
+      description: |
+        We hava three authentication modes:
+        * basic            - use username and password, and k8s apiserver need support ABAC mode
+        * token(recommand) - use k8s secret token for a service account
+        * kubeconfig       - not support yet
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: body
+        name: LoginSpec
+        required: true
+        description: LoginSpec contains information required to authenticate user.
+        schema:
+          $ref: "#/definitions/LoginSpec"
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/AuthResponse"
+        500:
+          description: Internal Server Error
+
+  /token/refresh:
+    post:
+      tags:
+      - auth
+      summary: Refresh jweToken
+      description: Refresh jweToken avoiding which was expired.
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: body
+        name: TokenRefreshSpec
+        required: true
+        description: TokenRefreshSpec contains token that is required by token refresh operation.
+        schema:
+          type: object
+          properties:
+            jweToken:
+              $ref: "#/definitions/JWE"
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/AuthResponse"
+        401:
+          description: Unauthorized
+        500:
+          description: Internal Server Error
+
+  /login/modes:
+    get:
+      tags:
+      - auth
+      summary: Retrive authentication modes supported
+      responses:
+        200:
+          description: ok
+          schema:
+            type: object
+            description: LoginModesResponse contains list of auth modes supported by k8sconsole.
+            required:
+            - modes
+            properties:
+              modes:
+                type: array
+                description: List of supported authentication mdoes.
+                items:
+                  type: string
+
+  /login/skippable:
+    get:
+      tags:
+      - auth
+      summary: A flag of hide 'auth skip' button
+      description: |
+        LoginSkippableResponse contains a flag that tells the frontend not to display the 'auth skip' button
+        It's just for hide the button, not disable unauthenticated access
+      responses:
+        200:
+          description: ok
+          schema:
+            type: object
+            required:
+            - skippable
+            properties:
+              skippable:
+                type: boolean
+
+  #================================================= csrf ==================================================#
+  /csrftoken/{action}:
+    get:
+      tags:
+      - csrf
+      summary: Get csrftoken for different verb
+      description: |
+        *Note.* csrf has not be enable yet. So you can just test this api, but is meaningless.
+      parameters:
+        - in: path
+          name: action
+          required: true
+          type: string
+          description: |
+            Different verb, e.g. if action is 'put' means to get csrftoken for verb post
+            Posible value of path parameter - action:
+            * PUT
+            * POST
+            * GET
+            * DELETE
+          default: get
+      responses:
+        200:
+          description: ok
+          schema:
+            type: object
+            properties:
+              token:
+                type: string
+                format: byte
+
+  #================================================ pod ====================================================#
+  /pod:
+    get:
+      tags:
+      - pod
+      summary: Get all pods in k8s cluster
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: query
+        name: filterBy
+        type: string
+        description: |
+          The 'filterBy' takes raw filter options string like param1=val1,param2=val2.
+
+          The valid filter parameters like below(Pod.ObjectMeta is in k8s.io/api/core/v1/types.go):
+          * name - Pod.ObjectMeta.name
+          * creationTimestamp - Pod.ObjectMeta.creationTimestamp
+          * namespace - Pod.ObjectMeta.namespace
+          * status - Pod.Status.Phase
+
+          And we use full match to filter value, just like syntax of 'like' in mysql
+
+          e.g.
+
+          '/pod?filterBy=name,kube-' will filter all pods which ObjectMeta.name contains string 'kube-'
+        default: name,kube-
+      - in: query
+        name: sortBy
+        type: string
+        description: |
+          The 'sortBy' holds the name of property that should be sorted and whether order should be asc or desc.
+
+          Like 'd,param1' means sort by param1 in desc. The valid sort parameters are same as 'filterBy'
+
+          e.g.
+
+          '/pod?sortBy=d,name'
+        default: d,name
+      - in: query
+        name: itemsPerPage
+        type: integer
+        description: The number of items per page
+        default: 2
+      - in: query
+        name: page
+        type: integer
+        description: The page number, which must starts from '1'
+        default: 1
+        minimum: 1
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/PodList"
+        500:
+          description: Internal Server Error
+
+  /pod/{namespace}:
+    get:
+      tags:
+      - pod
+      summary: Get list of pods in a namespace
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: path
+        name: namespace
+        required: true
+        type: string
+        description: The k8s namespace, e.g. 'kube-system', 'default'
+        default: default
+      - in: query
+        name: filterBy
+        type: string
+        description: |
+          The 'filterBy' takes raw filter options string like param1=val1,param2=val2.
+
+          The valid filter parameters like below(Pod.ObjectMeta is in `k8s.io/api/core/v1/types.go`):
+          * name - Pod.ObjectMeta.name
+          * creationTimestamp - Pod.ObjectMeta.creationTimestamp
+          * namespace - Pod.ObjectMeta.namespace
+          * status - Pod.Status.Phase
+
+          And we use full match to filter value, just like syntax of 'like' in mysql
+
+          e.g.
+
+          '/pod/{namespace}?filterBy=name,kube-' will filter all pods which ObjectMeta.name contains string 'kube-'
+        default: name,kube-
+      - in: query
+        name: sortBy
+        type: string
+        description: |
+          The 'sortBy' holds the name of property that should be sorted and whether order should be asc or desc.
+
+          Like 'd,param1' means sort by param1 in desc. The valid sort parameters are same as 'filterBy'
+
+          e.g.
+
+          '/pod/{namespace}?sortBy=d,name'
+        default: d,name
+      - in: query
+        name: itemsPerPage
+        type: integer
+        description: The number of items per page
+        default: 1
+      - in: query
+        name: page
+        type: integer
+        description: The page number, which must starts from '1'
+        default: 1
+        minimum: 1
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/PodList"
+        500:
+          description: Internal Server Error
+
+  #================================================ node ===================================================#
+  /node:
+    get:
+      tags:
+      - node
+      summary: Get node
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: query
+        name: filterBy
+        type: string
+        description: |
+          The 'filterBy' takes raw filter options string like param1=val1,param2=val2.
+
+          The valid filter parameters like below(Node.ObjectMeta is in `k8s.io/api/core/v1/types.go`):
+          * name - Node.ObjectMeta.name
+          * creationTimestamp - Node.ObjectMeta.creationTimestamp
+          * namespace - Node.ObjectMeta.namespace
+
+          And we use full match to filter value, just like syntax of 'like' in mysql
+
+          e.g.
+
+          '/node?filterBy=name,minikube' will filter all pods which ObjectMeta.name contains string 'minikube'
+        default: name,minikube
+      - in: query
+        name: sortBy
+        type: string
+        description: |
+          The 'sortBy' holds the name of property that should be sorted and whether order should be asc or desc.
+
+          Like 'd,param1' means sort by param1 in desc. The valid sort parameters are same as 'filterBy'
+
+          e.g.
+
+          '/node?sortBy=d,name'
+        default: d,name
+      - in: query
+        name: itemsPerPage
+        type: integer
+        description: The number of items per page
+        default: 1
+      - in: query
+        name: page
+        type: integer
+        description: The page number, which must starts from '1'
+        default: 1
+        minimum: 1
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/NodeList"
+        500:
+          description: Internal Server Error
+
+  /node/{name}:
+    get:
+      tags:
+      - node
+      summary: Get node's detail with specific name
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: path
+        name: name
+        required: true
+        type: string
+        description: Node's name
+        default: minikube
+      - in: query
+        name: filterBy
+        type: string
+        description: |
+          The 'filterBy' takes raw filter options string like param1=val1,param2=val2.
+
+          The valid filter parameters like below(Node.ObjectMeta is in `k8s.io/api/core/v1/types.go`):
+          * name - Node.ObjectMeta.name
+          * creationTimestamp - Node.ObjectMeta.creationTimestamp
+          * namespace - Node.ObjectMeta.namespace
+
+          And we use full match to filter value, just like syntax of 'like' in mysql
+
+          e.g.
+
+          '/node/{name}?filterBy=name,minikube' will filter all pods which ObjectMeta.name contains string 'minikube'
+        default: name,minikube
+      - in: query
+        name: sortBy
+        type: string
+        description: |
+          The 'sortBy' holds the name of property that should be sorted and whether order should be asc or desc.
+
+          Like 'd,param1' means sort by param1 in desc. The valid sort parameters are same as 'filterBy'
+
+          e.g.
+
+          '/node/{name}?sortBy=d,name'
+        default: d,name
+      - in: query
+        name: itemsPerPage
+        type: integer
+        description: The number of items per page
+        default: 1
+      - in: query
+        name: page
+        type: integer
+        description: The page number, which must starts from '1'
+        default: 1
+        minimum: 1
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/NodeDetail"
+        500:
+          description: Internal Server Error
+
+  /node/{name}/event:
+    get:
+      tags:
+      - node
+      summary: Get node's events with specific name
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: path
+        name: name
+        required: true
+        type: string
+        description: Node's name
+        default: minikube
+      - in: query
+        name: filterBy
+        type: string
+        description: |
+          The 'filterBy' takes raw filter options string like param1=val1,param2=val2.
+
+          The valid filter parameters like below(Node.ObjectMeta is in `k8s.io/api/core/v1/types.go`):
+          * name - Node.ObjectMeta.name
+          * creationTimestamp - Node.ObjectMeta.creationTimestamp
+          * namespace - Node.ObjectMeta.namespace
+
+          And we use full match to filter value, just like syntax of 'like' in mysql
+
+          e.g.
+
+          '/node/{name}/event?filterBy=name,minikube' will filter all pods which ObjectMeta.name contains string 'minikube'
+        default: name,minikube
+      - in: query
+        name: sortBy
+        type: string
+        description: |
+          The 'sortBy' holds the name of property that should be sorted and whether order should be asc or desc.
+
+          Like 'd,param1' means sort by param1 in desc. The valid sort parameters are same as 'filterBy'
+
+          e.g.
+
+          '/node/{name}/event?sortBy=d,name'
+        default: d,name
+      - in: query
+        name: itemsPerPage
+        type: integer
+        description: The number of items per page
+        default: 1
+      - in: query
+        name: page
+        type: integer
+        description: The page number, which must starts from '1'
+        default: 1
+        minimum: 1
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/EventList"
+        500:
+          description: Internal Server Error
+
+  /node/{name}/pod:
+    get:
+      tags:
+      - node
+      summary: Get node's pods with specific name
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: path
+        name: name
+        required: true
+        type: string
+        description: Node's name
+        default: minikube
+      - in: query
+        name: filterBy
+        type: string
+        description: |
+          The 'filterBy' takes raw filter options string like param1=val1,param2=val2.
+
+          The valid filter parameters like below(Node.ObjectMeta is in `k8s.io/api/core/v1/types.go`):
+          * name - Node.ObjectMeta.name
+          * creationTimestamp - Node.ObjectMeta.creationTimestamp
+          * namespace - Node.ObjectMeta.namespace
+
+          And we use full match to filter value, just like syntax of 'like' in mysql
+
+          e.g.
+
+          '/node/{name}/pod?filterBy=name,minikube' will filter all pods which ObjectMeta.name contains string 'minikube'
+        default: name,minikube
+      - in: query
+        name: sortBy
+        type: string
+        description: |
+          The 'sortBy' holds the name of property that should be sorted and whether order should be asc or desc.
+
+          Like 'd,param1' means sort by param1 in desc. The valid sort parameters are same as 'filterBy'
+
+          e.g.
+
+          '/node/{name}/pod?sortBy=d,name'
+        default: d,name
+      - in: query
+        name: itemsPerPage
+        type: integer
+        description: The number of items per page
+        default: 1
+      - in: query
+        name: page
+        type: integer
+        description: The page number, which must starts from '1'
+        default: 1
+        minimum: 1
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/PodList"
+        500:
+          description: Internal Server Error
+
+  #============================================== namespace =================================================#
+  /namespace:
+    get:
+      tags:
+      - namespace
+      summary: Get all list of namespaces
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: query
+        name: filterBy
+        type: string
+        description: |
+          The 'filterBy' takes raw filter options string like param1=val1,param2=val2.
+
+          The valid filter parameters like below(namespace.ObjectMeta is in `k8s.io/api/core/v1/types.go`):
+          * name - namespace.ObjectMeta.name
+          * creationTimestamp - namespace.ObjectMeta.creationTimestamp
+          * namespace - namespace.ObjectMeta.namespace
+
+          And we use full match to filter value, just like syntax of 'like' in mysql
+
+          e.g.
+
+          '/namespace?filterBy=name,kube-' will filter all pods which ObjectMeta.name contains string 'kube-'
+        default: name,kube-
+      - in: query
+        name: sortBy
+        type: string
+        description: |
+          The 'sortBy' holds the name of property that should be sorted and whether order should be asc or desc.
+
+          Like 'd,param1' means sort by param1 in desc. The valid sort parameters are same as 'filterBy'
+
+          e.g.
+
+          '/namespace?sortBy=d,name'
+        default: d,name
+      - in: query
+        name: itemsPerPage
+        type: integer
+        description: The number of items per page
+        default: 1
+      - in: query
+        name: page
+        type: integer
+        description: The page number, which must starts from '1'
+        default: 1
+        minimum: 1
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/NamespaceList"
+        500:
+          description: Internal Server Error
+    post:
+      tags:
+      - namespace
+      summary: Create a new namespace
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: body
+        name: NamespaceSpec
+        required: true
+        description: NamespaceSpec is a specification of namespace to create
+        schema:
+          type: object
+          required:
+          - name
+          properties:
+            name:
+              type: string
+              description: Name of the namespace
+              example: "test"
+      responses:
+        200:
+          description: ok
+          schema:
+            type: object
+            required:
+            - name
+            properties:
+              name:
+                type: string
+                description: Name of the namespace
+        500:
+          description: Internal Server Error
+
+  /namespace/{name}:
+    get:
+      tags:
+      - namespace
+      summary: Get the detail of namespace
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: path
+        name: name
+        required: true
+        type: string
+        description: The name of namespace
+        default: default
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/NamespaceDetail"
+        500:
+          description: Internal Server Error
+
+  /namespace/{name}/event:
+    get:
+      tags:
+      - namespace
+      summary: Get all events of the namespace
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: path
+        name: name
+        required: true
+        type: string
+        description: The name of namespace
+        default: default
+      - in: query
+        name: filterBy
+        type: string
+        description: |
+          The 'filterBy' takes raw filter options string like param1=val1,param2=val2.
+
+          The valid filter parameters like below(namespace.ObjectMeta is in `k8s.io/api/core/v1/types.go`):
+          * name - namespace.ObjectMeta.name
+          * creationTimestamp - namespace.ObjectMeta.creationTimestamp
+          * namespace - namespace.ObjectMeta.namespace
+
+          And we use full match to filter value, just like syntax of 'like' in mysql
+
+          e.g.
+
+          '/namespace/{name}/event?filterBy=name,kube-' will filter all pods which ObjectMeta.name contains string 'kube-'
+        default: name,kube-
+      - in: query
+        name: sortBy
+        type: string
+        description: |
+          The 'sortBy' holds the name of property that should be sorted and whether order should be asc or desc.
+
+          Like 'd,param1' means sort by param1 in desc. The valid sort parameters are same as 'filterBy'
+
+          e.g.
+
+          '/namespace/{name}/event?sortBy=d,name'
+        default: d,name
+      - in: query
+        name: itemsPerPage
+        type: integer
+        description: The number of items per page
+        default: 1
+      - in: query
+        name: page
+        type: integer
+        description: The page number, which must starts from '1'
+        default: 1
+        minimum: 1
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/EventList"
+        500:
+          description: Internal Server Error
+
+  #=============================================== secret ==================================================#
+  /secret:
+    get:
+      tags:
+      - secret
+      summary: Get all list of secrets
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: query
+        name: filterBy
+        type: string
+        description: |
+          The 'filterBy' takes raw filter options string like param1=val1,param2=val2.
+
+          The valid filter parameters like below(secret.ObjectMeta is in `k8s.io/api/core/v1/types.go`):
+          * name - secret.ObjectMeta.name
+          * creationTimestamp - secret.ObjectMeta.creationTimestamp
+          * namespace - secret.ObjectMeta.namespace
+
+          And we use full match to filter value, just like syntax of 'like' in mysql
+
+          e.g.
+
+          '/secret?filterBy=name,kube-' will filter all pods which ObjectMeta.name contains string 'kube-'
+        default: name,kube-
+      - in: query
+        name: sortBy
+        type: string
+        description: |
+          The 'sortBy' holds the name of property that should be sorted and whether order should be asc or desc.
+
+          Like 'd,param1' means sort by param1 in desc. The valid sort parameters are same as 'filterBy'
+
+          e.g.
+
+          '/secret?sortBy=d,name'
+        default: d,name
+      - in: query
+        name: itemsPerPage
+        type: integer
+        description: The number of items per page
+        default: 1
+      - in: query
+        name: page
+        type: integer
+        description: The page number, which must starts from '1'
+        default: 1
+        minimum: 1
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/SecretList"
+        500:
+          description: Internal Server Error
+    post:
+      tags:
+      - secret
+      summary: Create a image pull secret
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: body
+        name: ImagePullSecretSpec
+        required: true
+        description: ImagePullSecretSpec is a specification of an image pull secret implements SecretSpec
+        schema:
+          type: object
+          required:
+          - name
+          - namespace
+          - data
+          properties:
+            name:
+              type: string
+              description: Name of the secret
+              example: "test"
+            namespace:
+              type: string
+              description: Name of the namespace
+            data:
+              type: string
+              format: byte
+              description: |
+                The value of the .dockercfg property. It must be Base64 encoded.
+
+                The .dockercfg looks like below:
+                ```json
+                {
+                    "docker-register-server": {
+                         "username":"Your Username",
+                         "password":"Your Password",
+                         "email":"Your email",
+                         # Use command `echo <Your Username>: <Your Password> | base64` to get value of 'auth'
+                         "auth":"`base64(<Your Username>: <Your Password>)`"
+                    }
+                }
+
+                We can use command `base64 .dockercfg` to encode file .dockercfg
+                ```
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/Secret"
+        500:
+          description: Internal Server Error
+
+  /secret/{namespace}:
+    get:
+      tags:
+      - secret
+      summary: Get secrets of a specific namespace
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: path
+        name: namespace
+        required: true
+        type: string
+        description: The name of namespace
+        default: default
+      - in: query
+        name: filterBy
+        type: string
+        description: |
+          The 'filterBy' takes raw filter options string like param1=val1,param2=val2.
+
+          The valid filter parameters like below(secret.ObjectMeta is in `k8s.io/api/core/v1/types.go`):
+          * name - secret.ObjectMeta.name
+          * creationTimestamp - secret.ObjectMeta.creationTimestamp
+          * namespace - secret.ObjectMeta.namespace
+
+          And we use full match to filter value, just like syntax of 'like' in mysql
+
+          e.g.
+
+          '/secret/{namespace}?filterBy=name,kube-' will filter all pods which ObjectMeta.name contains string 'kube-'
+        default: name,kube-
+      - in: query
+        name: sortBy
+        type: string
+        description: |
+          The 'sortBy' holds the name of property that should be sorted and whether order should be asc or desc.
+
+          Like 'd,param1' means sort by param1 in desc. The valid sort parameters are same as 'filterBy'
+
+          e.g.
+
+          '/secret/{namespace}?sortBy=d,name'
+        default: d,name
+      - in: query
+        name: itemsPerPage
+        type: integer
+        description: The number of items per page
+        default: 1
+      - in: query
+        name: page
+        type: integer
+        description: The page number, which must starts from '1'
+        default: 1
+        minimum: 1
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/SecretList"
+        500:
+          description: Internal Server Error
+
+  /secret/{namespace}/{name}:
+    get:
+      tags:
+      - secret
+      summary: Get details of a secret in a specific namespace
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: path
+        name: namespace
+        required: true
+        type: string
+        description: The name of namespace
+        default: default
+      - in: path
+        name: name
+        required: true
+        type: string
+        description: The name of secret
+        default: default-token-n8tj4
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/SecretDetail"
+        500:
+          description: Internal Server Error
+
+  #============================================== configmap =================================================#
+  /configmap:
+    get:
+      tags:
+      - configmap
+      summary: Get all list of configmap
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: query
+        name: filterBy
+        type: string
+        description: |
+          The 'filterBy' takes raw filter options string like param1=val1,param2=val2.
+
+          The valid filter parameters like below(configmap.ObjectMeta is in `k8s.io/api/core/v1/types.go`):
+          * name - configmap.ObjectMeta.name
+          * creationTimestamp - configmap.ObjectMeta.creationTimestamp
+          * namespace - configmap.ObjectMeta.namespace
+
+          And we use full match to filter value, just like syntax of 'like' in mysql
+
+          e.g.
+
+          '/configmap?filterBy=name,kube-' will filter all pods which ObjectMeta.name contains string 'kube-'
+        default: name,kube-
+      - in: query
+        name: sortBy
+        type: string
+        description: |
+          The 'sortBy' holds the name of property that should be sorted and whether order should be asc or desc.
+
+          Like 'd,param1' means sort by param1 in desc. The valid sort parameters are same as 'filterBy'
+
+          e.g.
+
+          '/configmap?sortBy=d,name'
+        default: d,name
+      - in: query
+        name: itemsPerPage
+        type: integer
+        description: The number of items per page
+        default: 1
+      - in: query
+        name: page
+        type: integer
+        description: The page number, which must starts from '1'
+        default: 1
+        minimum: 1
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/ConfigMapList"
+        500:
+          description: Internal Server Error
+
+  /configmap/{namespace}:
+    get:
+      tags:
+      - configmap
+      summary: Get all list of configmap
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: path
+        name: namespace
+        required: true
+        type: string
+        description: The name of namespace
+        default: default
+      - in: query
+        name: filterBy
+        type: string
+        description: |
+          The 'filterBy' takes raw filter options string like param1=val1,param2=val2.
+
+          The valid filter parameters like below(configmap.ObjectMeta is in `k8s.io/api/core/v1/types.go`):
+          * name - configmap.ObjectMeta.name
+          * creationTimestamp - configmap.ObjectMeta.creationTimestamp
+          * namespace - configmap.ObjectMeta.namespace
+
+          And we use full match to filter value, just like syntax of 'like' in mysql
+
+          e.g.
+
+          '/configmap/{namespace}?filterBy=name,kube-' will filter all pods which ObjectMeta.name contains string 'kube-'
+        default: name,kube-
+      - in: query
+        name: sortBy
+        type: string
+        description: |
+          The 'sortBy' holds the name of property that should be sorted and whether order should be asc or desc.
+
+          Like 'd,param1' means sort by param1 in desc. The valid sort parameters are same as 'filterBy'
+
+          e.g.
+
+          '/configmap/{namespace}?sortBy=d,name'
+        default: d,name
+      - in: query
+        name: itemsPerPage
+        type: integer
+        description: The number of items per page
+        default: 1
+      - in: query
+        name: page
+        type: integer
+        description: The page number, which must starts from '1'
+        default: 1
+        minimum: 1
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/ConfigMapList"
+        500:
+          description: Internal Server Error
+
+  /configmap/{namespace}/{configmap}:
+    get:
+      tags:
+      - configmap
+      summary: Get all list of configmap
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: path
+        name: namespace
+        required: true
+        type: string
+        description: The name of namespace
+        default: kube-public
+      - in: path
+        name: configmap
+        required: true
+        type: string
+        description: The name of configmap
+        default: cluster-info
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/ConfigMapDetail"
+        500:
+          description: Internal Server Error
+
+  #========================================== persistent-volume =============================================#
+  /persistentvolume:
+    get:
+      tags:
+      - persistent-volume
+      summary: Get all list of persistent volume
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: query
+        name: filterBy
+        type: string
+        description: |
+          The 'filterBy' takes raw filter options string like param1=val1,param2=val2.
+
+          The valid filter parameters like below(persistentvolume.ObjectMeta is in `k8s.io/api/core/v1/types.go`):
+          * name - persistentvolume.ObjectMeta.name
+          * creationTimestamp - persistentvolume.ObjectMeta.creationTimestamp
+          * namespace - persistentvolume.ObjectMeta.namespace
+
+          And we use full match to filter value, just like syntax of 'like' in mysql
+
+          e.g.
+
+          '/persistentvolume?filterBy=name,kube-' will filter all pods which ObjectMeta.name contains string 'kube-'
+        default: name,kube-
+      - in: query
+        name: sortBy
+        type: string
+        description: |
+          The 'sortBy' holds the name of property that should be sorted and whether order should be asc or desc.
+
+          Like 'd,param1' means sort by param1 in desc. The valid sort parameters are same as 'filterBy'
+
+          e.g.
+
+          '/persistentvolume?sortBy=d,name'
+        default: d,name
+      - in: query
+        name: itemsPerPage
+        type: integer
+        description: The number of items per page
+        default: 1
+      - in: query
+        name: page
+        type: integer
+        description: The page number, which must starts from '1'
+        default: 1
+        minimum: 1
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/PersistentVolumeList"
+        500:
+          description: Internal Server Error
+
+  /persistentvolume/{persistentvolume}:
+    get:
+      tags:
+      - persistent-volume
+      summary: Get detail of persistent volume
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: path
+        name: persistentvolume
+        required: true
+        type: string
+        description: The name of persistentvolume
+        default: test
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/PersistentVolumeDetail"
+        500:
+          description: Internal Server Error
+
+  #======================================= persistent-volume-claim ==========================================#
+  /persistentvolumeclaim:
+    get:
+      tags:
+      - persistent-volume-claim
+      summary: Get all list of persistent volume claim
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: query
+        name: filterBy
+        type: string
+        description: |
+          The 'filterBy' takes raw filter options string like param1=val1,param2=val2.
+
+          The valid filter parameters like below(persistentvolumeclaim.ObjectMeta is in `k8s.io/api/core/v1/types.go`):
+          * name - persistentvolumeclaim.ObjectMeta.name
+          * creationTimestamp - persistentvolumeclaim.ObjectMeta.creationTimestamp
+          * namespace - persistentvolumeclaim.ObjectMeta.namespace
+
+          And we use full match to filter value, just like syntax of 'like' in mysql
+
+          e.g.
+
+          '/persistentvolumeclaim?filterBy=name,kube-' will filter all pods which ObjectMeta.name contains string 'kube-'
+        default: name,kube-
+      - in: query
+        name: sortBy
+        type: string
+        description: |
+          The 'sortBy' holds the name of property that should be sorted and whether order should be asc or desc.
+
+          Like 'd,param1' means sort by param1 in desc. The valid sort parameters are same as 'filterBy'
+
+          e.g.
+
+          '/persistentvolumeclaim?sortBy=d,name'
+        default: d,name
+      - in: query
+        name: itemsPerPage
+        type: integer
+        description: The number of items per page
+        default: 1
+      - in: query
+        name: page
+        type: integer
+        description: The page number, which must starts from '1'
+        default: 1
+        minimum: 1
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/PersistentVolumeClaimList"
+        500:
+          description: Internal Server Error
+
+  /persistentvolumeclaim/{namespace}:
+    get:
+      tags:
+      - persistent-volume-claim
+      summary: Get all of persistent volume claims in a specific namespace
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: path
+        name: namespace
+        required: true
+        type: string
+        description: The name of namespace
+        default: default
+      - in: query
+        name: filterBy
+        type: string
+        description: |
+          The 'filterBy' takes raw filter options string like param1=val1,param2=val2.
+
+          The valid filter parameters like below(persistentvolumeclaim.ObjectMeta is in `k8s.io/api/core/v1/types.go`):
+          * name - persistentvolumeclaim.ObjectMeta.name
+          * creationTimestamp - persistentvolumeclaim.ObjectMeta.creationTimestamp
+          * namespace - persistentvolumeclaim.ObjectMeta.namespace
+
+          And we use full match to filter value, just like syntax of 'like' in mysql
+
+          e.g.
+
+          '/persistentvolumeclaim/{namespace}?filterBy=name,kube-' will filter all pods which ObjectMeta.name contains string 'kube-'
+        default: name,kube-
+      - in: query
+        name: sortBy
+        type: string
+        description: |
+          The 'sortBy' holds the name of property that should be sorted and whether order should be asc or desc.
+
+          Like 'd,param1' means sort by param1 in desc. The valid sort parameters are same as 'filterBy'
+
+          e.g.
+
+          '/persistentvolumeclaim/{namespace}?sortBy=d,name'
+        default: d,name
+      - in: query
+        name: itemsPerPage
+        type: integer
+        description: The number of items per page
+        default: 1
+      - in: query
+        name: page
+        type: integer
+        description: The page number, which must starts from '1'
+        default: 1
+        minimum: 1
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/PersistentVolumeClaimList"
+        500:
+          description: Internal Server Error
+
+  /persistentvolumeclaim/{namespace}/{name}:
+    get:
+      tags:
+      - persistent-volume-claim
+      summary: Get detail of persistent volume claim in a specific namespace
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: path
+        name: namespace
+        required: true
+        type: string
+        description: The name of namespace
+        default: default
+      - in: path
+        name: name
+        required: true
+        type: string
+        description: The name of persistent volume claim
+        default: default
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/PersistentVolumeClaimDetail"
+        500:
+          description: Internal Server Error
+
+definitions:
+  LoginSpec:
+    type: object
+    description: |
+      LoginSpec is extracted from request coming from k8sconsole frontend during loging request. It contains all
+      information required to authenticate user.
+    properties:
+      username:
+        type: string
+        description: Use basic mode, need with password.
+      passowrd:
+        type: string
+        description: Use basic mode, need with username.
+      token:
+        type: string
+        description: Can use `kubectl describe secret ...` get the token for the default service account.
+        example: test-token
+      kubeConfig:
+        type: string
+        description: "KubeConfig is the content of users' kubeconfig file. We can extract all auth information
+        from the data in the file."
+
+  AuthResponse:
+    type: object
+    description: |
+      AuthResponse represents the response returned from k8sconsole backend for login requests. It contains generated
+      jweToken and a list of non-critical errors such as 'Failed authentication' to tell the frontend what unexpected
+      happened during login request.
+    required:
+    - jweToken
+    - errors
+    properties:
+      jweToken:
+        $ref: "#/definitions/JWE"
+      errors:
+        type: array
+        items:
+          type: string
+          description:  List of non-critical errors, that occurred during login
+
+  JWE:
+    type: object
+    description: |
+      JWE is the body of jweToken is a token generated during login request that contains auth info data in the payload.
+      We don't need to care about the content of jweToken in the frontend or client.
+
+      When we use other api, we need to put the jweToken in the request http header otherwise we will be returned
+      code 403.
+
+      \*Note.\* we don't have to use jweToken auth in the dev version(v0.0.1) to get resources.
+    required:
+    - protected
+    - aad
+    - encrypted_key
+    - iv
+    - ciphertext
+    properties:
+      protected:
+        type: string
+        format: byte
+      add:
+        type: string
+        format: byte
+      encrypted_key:
+        type: string
+        format: byte
+      iv:
+        type: string
+        format: byte
+      ciphertext:
+        type: string
+        format: byte
+
+  ObjectMeta:
+    type: object
+    description: ObjectMeta is metadata about an instance of resource
+    required:
+    - name
+    - namespace
+    - labels
+    - annotations
+    - creationTimestamp
+    properties:
+      name:
+        type: string
+        description: Object name and the name is unique within a namespace
+      namespace:
+        type: string
+        description: |
+          Any empty namespace equivalent to the 'default' namespace.
+          Not all objects are required to be scoped to a namespace - the value of this field for those objects will be empty
+      labels:
+        type: object
+        description: Labels are k-v pairs that may be scope and select individual resources.
+      annotations:
+        type: object
+        description: Annotations are unstructured key value data stored with a resource that be set by external tooling.
+      creationTimestamp:
+        type: string
+        format: date-time
+
+  TypeMeta:
+    type: object
+    description: TypeMeta describes the type of an object in response and request
+    required:
+    - kind
+    properties:
+      kind:
+        type: string
+        description: Kind of an object
+
+  ListMeta:
+    type: object
+    description: ListMeta describes list of objects.
+    required:
+    - totalItems
+    properties:
+      totalItems:
+        type: integer
+        description: Total number of items in list
+
+  ResourceStatus:
+    type: object
+    description: ResourceStatus provides basic information about resource status on the list
+    required:
+    - running
+    - pending
+    - failed
+    - succeeded
+    properties:
+      running:
+        type: integer
+        description: Number of resources that are currently in running state
+      pending:
+        type: integer
+        description: Number of resources that are currently in pending state
+      failed:
+        type: integer
+        description: Number of resources that are currently in failed state
+      succeeded:
+        type: integer
+        description: Number of resources that are currently in succeeded state
+
+  ResourceQuotaDetail:
+    type: object
+    required:
+    - objectMeta
+    - typeMeta
+    - scopes
+    - statusList
+    properties:
+      objectMeta:
+        $ref: "#/definitions/ObjectMeta"
+      typeMeta:
+        $ref: "#/definitions/TypeMeta"
+      scopes:
+        type: array
+        items:
+          type: string
+          enum: ["Terminating","NotTerminating","BestEffort","NotBestEffort"]
+      statusList:
+        type: object
+        additionalProperties:
+          type: object
+          properties:
+            used:
+              type: string
+            hard:
+              type: string
+
+  ResourceQuotaDetailList:
+    type: object
+    description: ResourceQuotaList is list of resource quotas associated to the namespace
+    required:
+    - listMeta
+    - items
+    properties:
+      listMeta:
+        $ref: "#/definitions/ListMeta"
+      items:
+        type: array
+        items:
+          $ref: "#/definitions/ResourceQuotaDetail"
+
+  LimitRangeItem:
+    type: object
+    properties:
+      resourceName:
+        type: string
+        description: ResourceName usage constraints on this kind by resource name
+      resourceType:
+        type: string
+        description: ResourceType of resource that this limit applies to
+      min:
+        type: string
+        description: Min usage constraints on this kind by resource name
+      max:
+        type: string
+        description: Max usage constraints on this kind by resource name
+      default:
+        type: string
+        description: Default resource requirement limit value by resource name.
+      defaultRequest:
+        type: string
+        description: DefaultRequest resource requirement request value by resource name
+      maxLimitRequestRatio:
+        type: string
+        description: MaxLimitRequestRatio represents the max burst value for the named resource
+
+  Condition:
+    type: object
+    description: Condition represents a single condition of a node or pod. e.g. v1.Pod.Status.Condition
+    required:
+    - type
+    - status
+    - lastProbeTime
+    - lastTransitionTime
+    - reason
+    - message
+    properties:
+      type:
+        type: string
+        description: Type of condition
+      status:
+        type: string
+        description: Status of condition
+        enum: ["True", "False", "Unknown"]
+      lastProbeTime:
+        type: string
+        format: data-time
+        description: Last probe time of a condition
+      lastTransitionTime:
+        type: string
+        format: data-time
+        description: Last transition time of a condition
+      reason:
+        type: string
+        description: Reason of a condition
+      message:
+        type: string
+        description: Message of a condition
+
+  ContainerState:
+    type: object
+    properties:
+      waiting:
+        $ref: "#/definitions/ContainerStateWaiting"
+      running:
+        type: object
+        properties:
+          startedAt:
+            type: string
+            format: data-time
+            description: Time at which the container was last (re-)started
+      terminated:
+        $ref: "#/definitions/ContainerStateTerminated"
+
+  ContainerStateWaiting:
+    type: object
+    description: ContainerStateWaiting is a waiting state of a container
+    properties:
+      reason:
+        type: string
+        description: (brief) Reason the container is not yet running
+      message:
+        type: string
+        description: Message regarding why the container is not yet running
+
+  ContainerStateTerminated:
+    type: object
+    description: ContainerStateTerminated is a terminated state of a container
+    properties:
+      exitCode:
+        type: integer
+        description: Exit status from the last termination of the container
+      signal:
+        type: integer
+        description: Signal from the last termination of the container
+      reason:
+        type: string
+        description: (brief) Reason from the last termination of the container
+      message:
+        type: string
+        description: Message regarding the last termination of the container
+      startedAt:
+        type: string
+        format: data-time
+        description: Time at which previous execution of the container started
+      finishedAt:
+        type: string
+        format: data-time
+        description: Time at which the container last terminated
+      containerID:
+        type: string
+        format: uuid
+        description: Container's ID in the format 'docker://<container_id>'
+
+  PodStatus:
+    type: object
+    required:
+    - status
+    - podPhase
+    - containerStates
+    properties:
+      status:
+        type: string
+        description: "Running Pending Failed Succeeded"
+      podPhase:
+        type: string
+        description: "Running Pending Failed Succeeded in apiserver guess"
+      containerStates:
+        type: array
+        items:
+          $ref: "#/definitions/ContainerState"
+
+  Pod:
+    type: object
+    description: Pod is a view of kubernetes Pod resource, it is Pod plus additional augmented data
+    required:
+    - objectMeta
+    - typeMeta
+    - podStatus
+    - restartCount
+    - nodeName
+    properties:
+      objectMeta:
+        $ref: "#/definitions/ObjectMeta"
+      typeMeta:
+        $ref: "#/definitions/TypeMeta"
+      podStatus:
+        $ref: "#/definitions/PodStatus"
+      restartCount:
+        type: integer
+        description: Count of containers restarts
+      nodeName:
+        type: string
+        description: Name of the node this pod runs on
+
+  PodList:
+    type: object
+    required:
+    - listMeta
+    - status
+    - pods
+    - errors
+    properties:
+      listMeta:
+        $ref: "#/definitions/ListMeta"
+      status:
+        $ref: "#/definitions/ResourceStatus"
+      pods:
+        type: array
+        items:
+          $ref: "#/definitions/Pod"
+      errors:
+        type: array
+        items:
+          type: string
+          description: List of non-critical errors, that occurred during resource retrieval
+
+  NodeAllocatedResources:
+    type: object
+    description: NodeAllocatedResources describes node allocated resources
+    required:
+    - cpuRequests
+    - cpuRequestFraction
+    - cpuLimits
+    - cpuLimitsFraction
+    - cpuCapacity
+    - memoryRequests
+    - memoryRequestsFraction
+    - memoryLimits
+    - memoryLimitsFraction
+    - memoryCapacity
+    - allocatedPods
+    - podCapacity
+    - podFraction
+    properties:
+      cpuRequests:
+        type: integer
+        format: int64
+        description: |
+          Kubernetes has a new metric called Millicores that is used to measure CPU usage.
+          It is a CPU core split into 1000 units (milli = 1000).
+          - 1. 1 cpu with 1 core has 1000m
+          - 2. 1 cpu with 2 core has 2*1000m = 2000m
+
+          CPURequests is number of allocated millicores
+      cpuRequestFraction:
+        type: number
+        format: double
+        description: CPURequestsFraction is a fraction of CPU, that is allocated
+      cpuLimits:
+        type: integer
+        format: int64
+        description: CPULimits is defined CPU limit
+      cpuLimitsFraction:
+        type: number
+        format: double
+        description: |
+          CPULimitsFraction is a fraction of defined CPU limit.
+          Note. can be over 100%, i.e. overcommitted.
+      cpuCapacity:
+        type: integer
+        format: int64
+        description: CPUCapacity is specified node CPU capacity in millicores
+      memoryRequests:
+        type: integer
+        format: int64
+        description: MemoryRequests is a fraction of memory, that is allocated
+      memoryRequestsFraction:
+        type: number
+        format: double
+        description: MemoryRequestsFraction is a fraction of memory, that is allocated
+      memoryLimits:
+        type: integer
+        format: int64
+        description: MemoryLimits is defined memory limit
+      memoryLimitsFraction:
+        type: number
+        format: double
+        description: MemoryLimitsFraction is a fraction of defined memory limit, can be over 100%, i.e. overcommitted
+      memoryCapacity:
+        type: integer
+        format: int64
+        description: MemoryCapacity is specified node memory capacity in bytes
+      allocatedPods:
+        type: integer
+        description: AllocatedPods in number of currently allocated pods on the node
+      podCapacity:
+        type: integer
+        format: int64
+        description: PodCapacity is maximum number of pods, that can be allocated on the node
+      podFraction:
+        type: number
+        format: double
+        description: PodFraction is a fraction of pods, that can be allocated on given node
+
+  Node:
+    type: object
+    description: Node is a presentation layer view of kubernetes nodes
+    required:
+    - objectMeta
+    - typeMeta
+    - ready
+    - allocatedResources
+    properties:
+      objectMeta:
+        $ref: "#/definitions/ObjectMeta"
+      typeMeta:
+        $ref: "#/definitions/TypeMeta"
+      ready:
+        type: string
+        description: |
+          These are valid condition statuses. "True" means a resource is in the condition.
+          "False" means a resource is not in the condition. "Unknown" means kubernetes
+          can't decide if a resource is in the condition or not.
+        enum: ["True", "False", "Unknown"]
+      allocatedResources:
+        $ref: "#/definitions/NodeAllocatedResources"
+
+  NodeList:
+    type: object
+    description: NodeList contains a list of nodes in the cluster
+    required:
+    - listMeta
+    - nodes
+    - errors
+    properties:
+      listMeta:
+        $ref: "#/definitions/ListMeta"
+      nodes:
+        type: array
+        items:
+          $ref: "#/definitions/Node"
+      errors:
+        type: array
+        items:
+          type: string
+          description: List of non-critical errors, that occurred during resource retrieval
+
+  NodeAddress:
+    type: object
+    description: NodeAddress contains information for the node's address
+    required:
+    - type
+    - address
+    properties:
+      type:
+        type: string
+        enum: ["Hostname","ExternalIP","InternalIP","ExternalDNS","InternalDNS"]
+      address:
+        type: string
+        description: The node address
+
+  NodeDetail:
+    type: object
+    description: |
+      NodeDetail is a presentation layer view of Kubernetes Node resource. This means it is Node plus
+      additional augmented data we can get from other sources.
+    required:
+    - objectMeta
+    - typeMeta
+    - phase
+    - allocatedResources
+    - podCIDR
+    - providerID
+    - unschedulable
+    - nodeInfo
+    - conditions
+    - containerImages
+    - podList
+    - eventList
+    - errors
+    properties:
+      objectMeta:
+        $ref: "#/definitions/ObjectMeta"
+      typeMeta:
+        $ref: "#/definitions/TypeMeta"
+      phase:
+        type: string
+        description: |
+          The three valid phases of node:
+          * Pending    - the node has been created/added by the system, but not configured
+          * Running    - the node has been configured and has Kubernetes components running
+          * Terminated - the node has been removed from the cluster
+        enum: ["Pending", "Running", "Terminated"]
+      allocatedResources:
+        $ref: "#/definitions/NodeAllocatedResources"
+      podCIDR:
+        type: string
+        description: PodCIDR represents the pod IP range assigned to the node
+      providerID:
+        type: string
+        description: ID of the node assigned by the cloud provider
+      unschedulable:
+        type: boolean
+        description: Unschedulable controls node schedulability of new pods. By default node is schedulable
+      nodeInfo:
+        type: object
+        properties:
+          machineID:
+            type: string
+            description: |
+              MachineID reported by the node. For unique machine identification
+              in the cluster this field is preferred. Learn more from man(5)
+              machine-id: http://man7.org/linux/man-pages/man5/machine-id.5.html
+          systemUUID:
+            type: string
+            description: |
+              SystemUUID reported by the node. For unique machine identification
+              MachineID is preferred. This field is specific to Red Hat hosts
+              https://access.redhat.com/documentation/en-US/Red_Hat_Subscription_Management/1/html/RHSM/getting-system-uuid.html
+          bootID:
+            type: string
+            description: Boot ID reported by the node
+          kernelVersion:
+            type: string
+            description: Kernel Version reported by the node from 'uname -r' (e.g. 3.16.0-0.bpo.4-amd64)
+          osImage:
+            type: string
+            description: OS Image reported by the node from /etc/os-release (e.g. Debian GNU/Linux 7 (wheezy))
+          containerRuntimeVersion:
+            type: string
+            description: ContainerRuntime Version reported by the node through runtime remote API (e.g. docker://1.5.0)
+          kubeletVersion:
+            type: string
+            description: Kubelet Version reported by the node
+          kubeProxyVersion:
+            type: string
+            description: KubeProxy Version reported by the node
+          operatingSystem:
+            type: string
+            description: The Operating System reported by the node
+          architecture:
+            type: string
+            description: The Architecture reported by the node
+      conditions:
+        $ref: "#/definitions/Condition"
+      containerImages:
+        type: array
+        items:
+          type: string
+          description: Container images of the node
+      podList:
+        $ref: "#/definitions/PodList"
+      eventList:
+        $ref: "#/definitions/EventList"
+      taints:
+        type: object
+        description: The node this Taint is attached to has the "effect" on any pod that does not tolerate the Taint
+        required:
+        - key
+        - effect
+        properties:
+          key:
+            type: string
+            description: The taint key to be applied to a node
+          value:
+            type: string
+            description: The taint value corresponding to the taint key
+          effect:
+            type: string
+            description: |
+              The effect of the taint on pods that do not tolerate the taint.
+              Valid effects are NoSchedule, PreferNoSchedule and NoExecute.
+            enum: ["NoSchedule", "PreferNoSchedule", "NoExecute"]
+          timeAdded:
+            type: string
+            format: date-time
+            description: |
+              TimeAdded represents the time at which the taint was added.
+              It is only written for NoExecute taints
+      address:
+        $ref: "#/definitions/NodeAddress"
+      errors:
+        type: array
+        items:
+          type: string
+          description: List of non-critical errors, that occurred during resource retrieval
+
+  Event:
+    type: object
+    description: Event of k8s
+    required:
+    - objectMeta
+    - typeMeta
+    - message
+    - sourceComponent
+    - sourceHost
+    - object
+    - count
+    - firstSeen
+    - lastSeen
+    - reason
+    - type
+    properties:
+      objectMeta:
+        $ref: "#/definitions/ObjectMeta"
+      typeMeta:
+        $ref: "#/definitions/TypeMeta"
+      message:
+        type: string
+        description: A human-readable description of the status of related object
+      sourceComponent:
+        type: string
+        description: Component from which the event is generated
+      sourceHost:
+        type: string
+        description: Host name on which the event is generated
+      object:
+        type: string
+        description: An object triggered an event
+      count:
+        type: integer
+        format: int32
+        description: The number of times this event has occurred
+      firstSeen:
+        type: string
+        format: date-time
+        description: The time at which the event was first occurred
+      lastSeen:
+        type: string
+        format: date-time
+        description: The time at which the event was last occurred
+      reason:
+        type: string
+        description: Short, machine-understandable string that gives the reason for this event being generated
+      type:
+        type: string
+        description: Event type
+
+  EventList:
+    type: object
+    description: The list of k8s events
+    required:
+    - listMeta
+    - events
+    properties:
+      listMeta:
+        $ref: "#/definitions/ListMeta"
+      events:
+        type: array
+        items:
+          $ref: "#/definitions/Event"
+
+  Namespace:
+    type: object
+    required:
+    - objectMeta
+    - typeMeta
+    - phase
+    properties:
+      objectMeta:
+        $ref: "#/definitions/ObjectMeta"
+      typeMeta:
+        $ref: "#/definitions/TypeMeta"
+      phase:
+        type: string
+        enum: ["Active", "Terminating"]
+
+  NamespaceList:
+    type: object
+    required:
+    - listMeta
+    - namespaces
+    - errors
+    properties:
+      listMeta:
+        $ref: "#/definitions/ListMeta"
+      namespaces:
+        type: array
+        items:
+          $ref: "#/definitions/Namespace"
+      errors:
+        type: array
+        items:
+          type: string
+          description: List of non-critical errors, that occurred during resource retrieval
+
+  NamespaceDetail:
+    type: object
+    description: |
+      NamespaceDetail is a presentation layer view of Kubernetes Namespace resource. This means it is Namespace plus
+      additional augmented data we can get from other sources.
+    required:
+    - objectMeta
+    - typeMeta
+    - phase
+    - eventList
+    - resourceQuotaList
+    - resourceLimits
+    - errors
+    properties:
+      objectMeta:
+        $ref: "#/definitions/ObjectMeta"
+      typeMeta:
+        $ref: "#/definitions/TypeMeta"
+      phase:
+        type: string
+        enum: ["Active", "Terminating"]
+      eventList:
+        $ref: "#/definitions/EventList"
+      resourceQuotaList:
+        $ref: "#/definitions/ResourceQuotaDetailList"
+      resourceLimits:
+        type: array
+        description: ResourceLimits is list of limit ranges associated to the namespace
+        items:
+          $ref: "#/definitions/LimitRangeItem"
+      errors:
+        type: array
+        items:
+          type: string
+          description: List of non-critical errors, that occurred during resource retrieval
+
+  Secret:
+    type: object
+    description: Secret is a single secret returned to the frontend
+    required:
+    - objectMeta
+    - typeMeta
+    - type
+    properties:
+      objectMeta:
+        $ref: "#/definitions/ObjectMeta"
+      typeMeta:
+        $ref: "#/definitions/TypeMeta"
+      type:
+        type: string
+        enum: ["Opaque","kubernetes.io/service-account-token","kubernetes.io/service-account.name","kubernetes.io/service-account.uid","token","kubernetes.kubeconfig","ca.crt","namespace","kubernetes.io/dockercfg",".dockercfg","kubernetes.io/dockerconfigjson",".dockerconfigjson","kubernetes.io/basic-auth","username","password","kubernetes.io/ssh-auth","ssh-privatekey","kubernetes.io/tls","tls.crt","tls.key"]
+
+  SecretList:
+    type: object
+    description: SecretsList is a response structure for a queried secrets list
+    required:
+    - listMeta
+    - secrets
+    - errors
+    properties:
+      listMeta:
+        $ref: "#/definitions/ListMeta"
+      secrets:
+        type: array
+        items:
+          $ref: "#/definitions/Secret"
+      errors:
+        type: array
+        items:
+          type: string
+          description: List of non-critical errors, that occurred during resource retrieval
+
+  SecretDetail:
+    type: object
+    description: SecretDetail API resource provides mechanisms to inject containers with configuration data while keeping containers agnostic of Kubernetes
+    required:
+    - objectMeta
+    - typeMeta
+    - data
+    - type
+    properties:
+      objectMeta:
+        $ref: "#/definitions/ObjectMeta"
+      typeMeta:
+        $ref: "#/definitions/TypeMeta"
+      data:
+        type: object
+        description: |
+          Data contains the secret data.  Each key must be a valid DNS_SUBDOMAIN or leading dot followed by valid
+          DNS_SUBDOMAIN.
+
+          The serialized form of the secret data is a base64 encoded string, representing the arbitrary
+          (possibly non-string) data value here.
+        additionalProperties:
+          type: string
+          format: byte
+      type:
+        type: string
+        enum: ["Opaque","kubernetes.io/service-account-token","kubernetes.io/service-account.name","kubernetes.io/service-account.uid","token","kubernetes.kubeconfig","ca.crt","namespace","kubernetes.io/dockercfg",".dockercfg","kubernetes.io/dockerconfigjson",".dockerconfigjson","kubernetes.io/basic-auth","username","password","kubernetes.io/ssh-auth","ssh-privatekey","kubernetes.io/tls","tls.crt","tls.key"]
+
+  ConfigMap:
+    type: object
+    description: |
+      ConfigMap API resource provides mechanisms to inject containers with configuration data while keeping
+      containers agnostic of Kubernetes
+    required:
+    - objectMeta
+    - typeMeta
+    properties:
+      objectMeta:
+        $ref: "#/definitions/ObjectMeta"
+      typeMeta:
+        $ref: "#/definitions/TypeMeta"
+
+  ConfigMapList:
+    type: object
+    description: ConfigMapList contains a list of Config Maps in the cluster
+    required:
+    - listMeta
+    - items
+    - errors
+    properties:
+      listMeta:
+        $ref: "#/definitions/ListMeta"
+      items:
+        type: array
+        items:
+          $ref: "#/definitions/ConfigMap"
+      errors:
+        type: array
+        items:
+          type: string
+          description: List of non-critical errors, that occurred during resource retrieval
+
+  ConfigMapDetail:
+    type: object
+    description: |
+      ConfigMapDetail API resource provides mechanisms to inject containers with configuration data while keeping
+      containers agnostic of Kubernetes
+    required:
+    - objectMeta
+    - typeMeta
+    - data
+    properties:
+      objectMeta:
+        $ref: "#/definitions/ObjectMeta"
+      typeMeta:
+        $ref: "#/definitions/TypeMeta"
+      data:
+        type: object
+        description: |
+          Data contains the configuration data. Each key must be a valid DNS_SUBDOMAIN with an optional leading dot.
+        additionalProperties:
+          type: string
+
+  PersistentVolume:
+    type: object
+    description: |
+      PersistentVolume provides the simplified presentation layer view of kubernetes Persistent Volume resource.
+    required:
+    - objectMeta
+    - typeMeta
+    - capacity
+    - accessModes
+    - reclaimPolicy
+    - storageClass
+    - status
+    - claim
+    - reason
+    properties:
+      objectMeta:
+        $ref: "#/definitions/ObjectMeta"
+      typeMeta:
+        $ref: "#/definitions/TypeMeta"
+      capacity:
+        type: object
+        additionalProperties:
+          type: object
+          properties:
+            i:
+              description: i is the quantity in int64 scaled form, if d.Dec == nil
+              type: object
+              properties:
+                value:
+                  type: integer
+                  format: int64
+                scale:
+                  type: integer
+                  description: |
+                    Scale is used for getting and setting the base-10 scaled value.
+
+                    Base-2 scales are omitted for mathematical simplicity.
+
+                    See Quantity.ScaledValue for more details.
+                  enum: [-9, -6, -3, 3, 6, 9, 12, 15, 18]
+            d:
+              description: d is the quantity in inf.Dec form if d.Dec != nil
+              type: object
+              properties:
+                unscaled:
+                  type: object
+                  description: |
+                    An Int represents a signed multi-precision integer.
+                    The zero value for an Int represents the value 0.
+                  properties:
+                    neg:
+                      type: boolean
+                    abs:
+                      type: integer
+                scale:
+                  type: integer
+                  format: int32
+                  description: Scale represents the type used for the scale of a Dec.
+            s:
+              type: string
+              description: s is the generated value of this quantity to avoid recalculation
+            format:
+              type: string
+              description: Change Format at will. See the comment for Canonicalize for more details.
+              enum: ["DecimalExponent", "BinarySI", "DecimalSI"]
+      accessModes:
+        type: string
+        enum: ["ReadWriteOnce", "ReadOnlyMany", "ReadWriteMany"]
+      reclaimPolicy:
+        type: string
+        enum: ["Recycle", "Delete", "Retain"]
+      storageClass:
+        type: string
+      status:
+        type: string
+        enum: ["Pending", "Available", "Bound", "Released", "Failed"]
+      claim:
+        type: string
+      reason:
+        type: string
+
+  PersistentVolumeList:
+    type: object
+    description: PersistentVolumeList contains a list of Persistent Volumes in the cluster
+    required:
+    - listMeta
+    - items
+    - errors
+    properties:
+      listMeta:
+        $ref: "#/definitions/ListMeta"
+      items:
+        type: array
+        items:
+          $ref: "#/definitions/PersistentVolume"
+      errors:
+        type: array
+        items:
+          type: string
+          description: List of non-critical errors, that occurred during resource retrieval
+
+  PersistentVolumeDetail:
+    type: object
+    description: |
+      PersistentVolumeDetail provides the presentation layer view of kubernetes Persistent Volume resource.
+    required:
+    - objectMeta
+    - typeMeta
+    - status
+    - claim
+    - reclaimPolicy
+    - accessModes
+    - storageClass
+    - capacity
+    - message
+    - persistentVolumeSource
+    - reason
+    properties:
+      objectMeta:
+        $ref: "#/definitions/ObjectMeta"
+      typeMeta:
+        $ref: "#/definitions/TypeMeta"
+      status:
+        type: string
+        enum: ["Pending", "Available", "Bound", "Released", "Failed"]
+      claim:
+        type: string
+      reclaimPolicy:
+        type: string
+        enum: ["Recycle", "Delete", "Retain"]
+      accessModes:
+        type: string
+        enum: ["ReadWriteOnce", "ReadOnlyMany", "ReadWriteMany"]
+      storageClass:
+        type: string
+      capacity:
+        type: object
+        additionalProperties:
+          type: object
+          properties:
+            i:
+              description: i is the quantity in int64 scaled form, if d.Dec == nil
+              type: object
+              properties:
+                value:
+                  type: integer
+                  format: int64
+                scale:
+                  type: integer
+                  description: |
+                    Scale is used for getting and setting the base-10 scaled value.
+
+                    Base-2 scales are omitted for mathematical simplicity.
+
+                    See Quantity.ScaledValue for more details.
+                  enum: [-9, -6, -3, 3, 6, 9, 12, 15, 18]
+            d:
+              description: d is the quantity in inf.Dec form if d.Dec != nil
+              type: object
+              properties:
+                unscaled:
+                  type: object
+                  description: |
+                    An Int represents a signed multi-precision integer.
+                    The zero value for an Int represents the value 0.
+                  properties:
+                    neg:
+                      type: boolean
+                    abs:
+                      type: integer
+                scale:
+                  type: integer
+                  format: int32
+                  description: Scale represents the type used for the scale of a Dec.
+            s:
+              type: string
+              description: s is the generated value of this quantity to avoid recalculation
+            format:
+              type: string
+              description: Change Format at will. See the comment for Canonicalize for more details.
+              enum: ["DecimalExponent", "BinarySI", "DecimalSI"]
+      message:
+        type: string
+      persistentVolumeSource:
+        type: object
+        description: |
+          PersistentVolumeSource is similar to VolumeSource but meant for the administrator who creates PVs.
+          Exactly one of its members must be set.
+
+          See k8s.io/api/core/v1/types.go
+      reason:
+        type: string
+
+  PersistentVolumeClaim:
+    type: object
+    description: |
+      PersistentVolumeClaim provides the simplified presentation layer view of Kubernetes Persistent Volume Claim
+      resource.
+    required:
+    - objectMeta
+    - typeMeta
+    - status
+    - volume
+    - capacity
+    - accessModes
+    - storageClass
+    properties:
+      objectMeta:
+        $ref: "#/definitions/ObjectMeta"
+      typeMeta:
+        $ref: "#/definitions/TypeMeta"
+      status:
+        type: string
+        enum: ["Pending", "Available", "Bound", "Released", "Failed"]
+      volume:
+        type: string
+      capacity:
+        type: object
+        additionalProperties:
+          type: object
+          properties:
+            i:
+              description: i is the quantity in int64 scaled form, if d.Dec == nil
+              type: object
+              properties:
+                value:
+                  type: integer
+                  format: int64
+                scale:
+                  type: integer
+                  description: |
+                    Scale is used for getting and setting the base-10 scaled value.
+
+                    Base-2 scales are omitted for mathematical simplicity.
+
+                    See Quantity.ScaledValue for more details.
+                  enum: [-9, -6, -3, 3, 6, 9, 12, 15, 18]
+            d:
+              description: d is the quantity in inf.Dec form if d.Dec != nil
+              type: object
+              properties:
+                unscaled:
+                  type: object
+                  description: |
+                    An Int represents a signed multi-precision integer.
+                    The zero value for an Int represents the value 0.
+                  properties:
+                    neg:
+                      type: boolean
+                    abs:
+                      type: integer
+                scale:
+                  type: integer
+                  format: int32
+                  description: Scale represents the type used for the scale of a Dec.
+            s:
+              type: string
+              description: s is the generated value of this quantity to avoid recalculation
+            format:
+              type: string
+              description: Change Format at will. See the comment for Canonicalize for more details.
+              enum: ["DecimalExponent", "BinarySI", "DecimalSI"]
+      accessModes:
+        type: string
+        enum: ["ReadWriteOnce", "ReadOnlyMany", "ReadWriteMany"]
+      storageClass:
+        type: string
+
+  PersistentVolumeClaimList:
+    type: object
+    description: PersistentVolumeClaimList contains a list of Persistent Volume Claims in the cluster.
+    required:
+    - listMeta
+    - items
+    - errors
+    properties:
+      listMeta:
+        $ref: "#/definitions/ListMeta"
+      items:
+        type: array
+        items:
+          $ref: "#/definitions/PersistentVolumeClaim"
+      errors:
+        type: array
+        items:
+          type: string
+          description: List of non-critical errors, that occurred during resource retrieval
+
+  PersistentVolumeClaimDetail:
+    type: object
+    description: |
+      PersistentVolumeClaimDetail provides the presentation layer view of Kubernetes Persistent Volume Claim resource.
+    required:
+    - objectMeta
+    - typeMeta
+    - status
+    - volume
+    - capacity
+    - accessModes
+    - storageClass
+    properties:
+      objectMeta:
+        $ref: "#/definitions/ObjectMeta"
+      typeMeta:
+        $ref: "#/definitions/TypeMeta"
+      status:
+        type: string
+        enum: ["Pending", "Available", "Bound", "Released", "Failed"]
+      volume:
+        type: string
+      capacity:
+        type: object
+        additionalProperties:
+          type: object
+          properties:
+            i:
+              description: i is the quantity in int64 scaled form, if d.Dec == nil
+              type: object
+              properties:
+                value:
+                  type: integer
+                  format: int64
+                scale:
+                  type: integer
+                  description: |
+                    Scale is used for getting and setting the base-10 scaled value.
+
+                    Base-2 scales are omitted for mathematical simplicity.
+
+                    See Quantity.ScaledValue for more details.
+                  enum: [-9, -6, -3, 3, 6, 9, 12, 15, 18]
+            d:
+              description: d is the quantity in inf.Dec form if d.Dec != nil
+              type: object
+              properties:
+                unscaled:
+                  type: object
+                  description: |
+                    An Int represents a signed multi-precision integer.
+                    The zero value for an Int represents the value 0.
+                  properties:
+                    neg:
+                      type: boolean
+                    abs:
+                      type: integer
+                scale:
+                  type: integer
+                  format: int32
+                  description: Scale represents the type used for the scale of a Dec.
+            s:
+              type: string
+              description: s is the generated value of this quantity to avoid recalculation
+            format:
+              type: string
+              description: Change Format at will. See the comment for Canonicalize for more details.
+              enum: ["DecimalExponent", "BinarySI", "DecimalSI"]
+      accessModes:
+        type: string
+        enum: ["ReadWriteOnce", "ReadOnlyMany", "ReadWriteMany"]
+      storageClass:
+        type: string
+
+

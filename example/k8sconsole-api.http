@@ -8,6 +8,26 @@ Cache-Control: no-cache
   "Token": "test-token"
 }
 
+### Test /token/refresh
+POST http://localhost:9090/api/v1/token/refresh
+Content-Type: application/json
+Cache-Control: no-cache
+
+{
+  "jweToken": "{\"protected\":\"eyJhbGciOiJSU0EtT0FFUC0yNTYiLCJlbmMiOiJBMjU2R0NNIn0\",\"aad\":\"eyJleHAiOiIyMDE4LTExLTIxVDIwOjMwOjIwKzA4OjAwIiwiaWF0IjoiMjAxOC0xMS0yMVQyMDoxNToyMCswODowMCJ9\",\"encrypted_key\":\"mjqI30nPCRsbmRg_rMQPxYw5YLRpN-bXePKJzt4Ga0yCPO2Kz3cTSXuwy5cxEdjNQaXbyZ7ztxXgVE83EeUvoN7XG9DLKsFiECH7ZsXTt_Xov2e5XoHXdUWv_pQZRJfWcSyQ2zv5uSA9LbjT2JFNYV9VxOLw6SMocU1YJxu1KwiRteGEQvZ0y9wuCDMY8UkJFrtDBCt0DaTBmLLX1jyT4PBPPbMCnujtPH7E0JNlMjmVCSOEDTQMdrC4jcVescqcGrS-T8YrKejUVRwANKOtOruzIhKYBLDIII2RgiV9redfdPRy847ydOsTHfOQ3J92OyZAYpNrZtGbMGNjsWniUw\",\"iv\":\"omP6G1AXuZ4eOcri\",\"ciphertext\":\"-HfZn6q58cFj2EEizyciOEZvCB2jLED4MvOi3FTBMllseAWt5-QYBDC-lO4\",\"tag\":\"Tg1yDcQ7GTU3sHMa4QDVzA\"}"
+}
+
+### Test /login/modes
+GET http://localhost:9090/api/v1/login/modes
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /login/skippable
+GET http://localhost:9090/api/v1/login/skippable
+Accept: application/json
+Cache-Control: no-cache
+
+
 ################################################### Test  csrfToken ################################################
 ### Test /api/v1/csrftoken/{action}
 GET http://localhost:9090/api/v1/csrftoken/get

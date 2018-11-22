@@ -23,7 +23,7 @@ let runningBackendProcess = null;
  * Builds array of args for backend process based on env vars and dev/prod mode.
  * @param {string} mode
  * @return {!Array<string>}
- * TODO The backend args has not be designed
+ * TODO(wzt3309) The backend args has not be designed
  */
 function getBackendArgs(mode) {
     let args = [];
@@ -108,7 +108,7 @@ gulp.task('spawn-backend', ['backend', 'kill-backend'], function () {
     runningBackendProcess.on("exit", function () {
         // Mark there is not backend process running anymore.
         runningBackendProcess = null;
-    })
+    });
 });
 
 /**
@@ -140,7 +140,7 @@ gulp.task('kill-backend', function (doneFn) {
             doneFn();
         });
 
-        runningBackendProcess.kill()
+        runningBackendProcess.kill();
     } else {
         doneFn();
     }

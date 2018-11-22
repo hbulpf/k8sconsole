@@ -81,6 +81,7 @@ func handleFatalInitError(err error) {
 func main() {
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
+
 	flag.CommandLine.Parse(make([]string, 0))	// Init for glog calls
 
 	// Initializes k8sconsole arguments holder so we can read them in other package
