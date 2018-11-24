@@ -1,38 +1,30 @@
 sudo: required
 dist: trusty
 group: edge
-
 language: node_js
 node_js:
-  - 8.6.0
-
+- 8.6.0
 cache:
   directories:
   - node_modules
   - ".tools"
-
 install:
 - chmod +x build/*.sh
-
 before_script:
 - eval "$(gimme 1.10.2)"
-
 script:
 - "./node_modules/.bin/gulp build:cross"
-
 before_deploy:
-- "mv ./dist/windows/k8sconsole-windows-amd64 ./dist/windows/k8sconsole-windows-amd64.exe"
-
+- mv ./dist/windows/k8sconsole-windows-amd64 ./dist/windows/k8sconsole-windows-amd64.exe
 deploy:
   provider: releases
   api_key:
-    secure: gjdbvppA2JV8CoQjsuZUEJhmjrPQJ3GUR0V+/mks2K9lXeG/YBf33gryUIrgqDh9Lb9lpbiLTaV2b1rT69aebzsD9dehCAWR8YC2bV2F3HSp384oTNzVWiR8qiCcpkcBy6NWbUBRgoEavYoRuW3et/6nW//MnvYqR7Hb3sJ7GFUIOy7sAycA6D4GWGRitR7a8uo9XydIuU6+XW9H9GHTOn4qWi5E5B5nJslYOeneV9PJhTqgTclYBmd6ZrQyND5bmTzBDeQjCZiypdUQNc782tmKBBI1wTMBmVzORMZLfSgA7jfTf5P9erzGha0J1KSlcL6bKUHIv5RUT2lT2J6wr3t4wFb8akPHnqpjx87MGq6EMSwu0C/EMO71hxLmTA0vjAsaFFiZqaqZV3Re+GZi0sxf9+cYY+B1w6X0Qvp/L5j63NGqQ77Z/apgA3lZm3HKTpmUoxQxUZrUq9rPtyrtOZOUBK9/IjugW4+EM3KwlkQ+WI6NMUEpfh5Byf78Oi15vU6RXWiEnAdC5e4pgaNa9b9V56I7MsFIvJoaLcGgjx8C2FoJ+vFyICQSgHeTLK/dhZmKD55Q9+qEnOYlIv4xusFbcGvdMYz1AXEsoSwBOt2L/92Mdb/hfBSkm9cXrhM7e9SdA9+9Gee1XJbYbjNLRqqMzuJQGLAPBAdfTTyhZ10=
+    secure: O5BtxR/2QO07he9wwudp1ii1mIm4xFg0mS+cWKKfvbKpHXOSc+uMDv46Iy7gWlvy7vyc6sdvovNakIiLsoHqOha/p3MlfcyGEvnLETeygHzUw5ngwgoGvzm5K9AvEA0dV9EbzujVlxKHy7J8p6dOTIk9ps6jiTWYKBP7fxJXsthma5z1El8j1TlzYGlH3mOTAaP9Rrpx1Lj0y5yLhqRkh0ygYfjJrlfs/iWosKbUMDPM0uuaQQ60ZX3/VmmbAABDZDZBKDz9Cx+Rpw6hiL+m5HJQMFDjUAb8yTzsnfpMyVCndjVI9uJPvUP/zHcA93TUR7rI4g/z7F/1F2R0bIWLRKg8PakhNKAFEKF1MOVf4X0xm83MIeGMEvMqY1lmNhISRZYjCQZqtzu+qOz728d1JSptiyv+srlosDduH5ebX57XlQRaqvQEDgHPdxJHL/wLpUZfg5Ea1a09fH4uXW3jSSpV7nVUZKi1ib7jKaEI8dv/Ke20+R7zu94mXqnvJFKPmpOu5HurwIJ4iAp5FOtmO0UUp2fNA9CwBvBc9jkb+HEXY8HQM/EDcUajlzUt7XcPjxMG1ILgiqM1/e5WD8nmZ1zuiZehvBjwSFgkZv3mwNu7p+fRsm71lk6K0868q4oqPFmbWf2+4iU+Mid3NVBYxXFfOhePNEM4DAnhOU9bcxw=
   file:
     - ./dist/linux/k8sconsole-linux-amd64
     - ./dist/windows/k8sconsole-windows-amd64.exe
     - ./dist/darwin/k8sconsole-darwin-amd64
   skip_cleanup: true
   on:
-    repo: wzt3309/k8sconsole
+    repo: hbulpf/k8sconsole
     tags: true
-
