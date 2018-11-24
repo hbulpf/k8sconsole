@@ -42,6 +42,10 @@ tags:
   description: CRUD Operations of Persistent Volume
 - name: persistent-volume-claim
   description: CRUD Operations of Persistent Volume Claim
+- name: storageclass
+  description: CRUD Operations of StorageClass
+- name: service
+  description: CRUD Operations of Service
 
 paths:
   #================================================= auth ==================================================#
@@ -1312,6 +1316,330 @@ paths:
         500:
           description: Internal Server Error
 
+  #============================================ storageclass ================================================#
+  /storageclass:
+    get:
+      tags:
+      - storageclass
+      summary: Get all list of storageclass
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: query
+        name: filterBy
+        type: string
+        description: |
+          The 'filterBy' takes raw filter options string like param1=val1,param2=val2.
+
+          The valid filter parameters like below(storageclass.ObjectMeta is in `k8s.io/api/core/v1/types.go`):
+          * name - storageclass.ObjectMeta.name
+          * creationTimestamp - storageclass.ObjectMeta.creationTimestamp
+          * namespace - storageclass.ObjectMeta.namespace
+
+          And we use full match to filter value, just like syntax of 'like' in mysql
+
+          e.g.
+
+          '/storageclass?filterBy=name,kube-' will filter all pods which ObjectMeta.name contains string 'kube-'
+        default: name,kube-
+      - in: query
+        name: sortBy
+        type: string
+        description: |
+          The 'sortBy' holds the name of property that should be sorted and whether order should be asc or desc.
+
+          Like 'd,param1' means sort by param1 in desc. The valid sort parameters are same as 'filterBy'
+
+          e.g.
+
+          '/storageclass?sortBy=d,name'
+        default: d,name
+      - in: query
+        name: itemsPerPage
+        type: integer
+        description: The number of items per page
+        default: 1
+      - in: query
+        name: page
+        type: integer
+        description: The page number, which must starts from '1'
+        default: 1
+        minimum: 1
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/StorageClassList"
+        500:
+          description: Internal Server Error
+
+  /storageclass/{storageclass}:
+    get:
+      tags:
+      - storageclass
+      summary: Get detail of storageclass
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+        - in: path
+          name: storageclass
+          required: true
+          type: string
+          description: Name of storageclass
+          default: test
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/StorageClass"
+        500:
+          description: Internal Server Error
+
+  /storageclass/{storageclass}/persistentvolume:
+    get:
+      tags:
+      - storageclass
+      summary: Get persistent volume list of the storageclass
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: path
+        name: storageclass
+        required: true
+        type: string
+        description: Name of storageclass
+        default: test
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/PersistentVolumeList"
+        500:
+          description: Internal Server Error
+
+  #============================================ service ================================================#
+  /service:
+    get:
+      tags:
+      - service
+      summary: Get all list of services
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: query
+        name: filterBy
+        type: string
+        description: |
+          The 'filterBy' takes raw filter options string like param1=val1,param2=val2.
+
+          The valid filter parameters like below(service.ObjectMeta is in `k8s.io/api/core/v1/types.go`):
+          * name - service.ObjectMeta.name
+          * creationTimestamp - service.ObjectMeta.creationTimestamp
+          * namespace - service.ObjectMeta.namespace
+
+          And we use full match to filter value, just like syntax of 'like' in mysql
+
+          e.g.
+
+          '/service?filterBy=name,kube-' will filter all pods which ObjectMeta.name contains string 'kube-'
+        default: name,kube-
+      - in: query
+        name: sortBy
+        type: string
+        description: |
+          The 'sortBy' holds the name of property that should be sorted and whether order should be asc or desc.
+
+          Like 'd,param1' means sort by param1 in desc. The valid sort parameters are same as 'filterBy'
+
+          e.g.
+
+          '/service?sortBy=d,name'
+        default: d,name
+      - in: query
+        name: itemsPerPage
+        type: integer
+        description: The number of items per page
+        default: 1
+      - in: query
+        name: page
+        type: integer
+        description: The page number, which must starts from '1'
+        default: 1
+        minimum: 1
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/ServiceList"
+        500:
+          description: Internal Server Error
+
+  /service/{namespace}:
+    get:
+      tags:
+      - service
+      summary: Get all list of services in a specific namespace
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: path
+        name: namespace
+        required: true
+        type: string
+        description: The name of namespace
+        default: default
+      - in: query
+        name: filterBy
+        type: string
+        description: |
+          The 'filterBy' takes raw filter options string like param1=val1,param2=val2.
+
+          The valid filter parameters like below(service.ObjectMeta is in `k8s.io/api/core/v1/types.go`):
+          * name - service.ObjectMeta.name
+          * creationTimestamp - service.ObjectMeta.creationTimestamp
+          * namespace - service.ObjectMeta.namespace
+
+          And we use full match to filter value, just like syntax of 'like' in mysql
+
+          e.g.
+
+          '/service/{namespace}?filterBy=name,kube-' will filter all pods which ObjectMeta.name contains string 'kube-'
+        default: name,kube-
+      - in: query
+        name: sortBy
+        type: string
+        description: |
+          The 'sortBy' holds the name of property that should be sorted and whether order should be asc or desc.
+
+          Like 'd,param1' means sort by param1 in desc. The valid sort parameters are same as 'filterBy'
+
+          e.g.
+
+          '/service/{namespace}?sortBy=d,name'
+        default: d,name
+      - in: query
+        name: itemsPerPage
+        type: integer
+        description: The number of items per page
+        default: 1
+      - in: query
+        name: page
+        type: integer
+        description: The page number, which must starts from '1'
+        default: 1
+        minimum: 1
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/ServiceList"
+        500:
+          description: Internal Server Error
+
+  /service/{namespace}/{service}:
+    get:
+      tags:
+      - service
+      summary: Get detail of a specific service
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: path
+        name: namespace
+        required: true
+        type: string
+        description: The name of namespace
+        default: default
+      - in: path
+        name: service
+        required: true
+        type: string
+        description: The name of service
+        default: kubernetes
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/ServiceDetail"
+        500:
+          description: Internal Server Error
+
+  /service/{namespace}/{service}/pod:
+    get:
+      tags:
+      - service
+      summary: Get pods of a specific service
+      produces:
+      - application/json
+      - text/plain
+      parameters:
+      - in: path
+        name: namespace
+        required: true
+        type: string
+        description: The name of namespace
+        default: default
+      - in: path
+        name: service
+        required: true
+        type: string
+        description: The name of service
+        default: kubernetes
+      - in: query
+        name: filterBy
+        type: string
+        description: |
+          The 'filterBy' takes raw filter options string like param1=val1,param2=val2.
+
+          The valid filter parameters like below(Pod.ObjectMeta is in k8s.io/api/core/v1/types.go):
+          * name - Pod.ObjectMeta.name
+          * creationTimestamp - Pod.ObjectMeta.creationTimestamp
+          * namespace - Pod.ObjectMeta.namespace
+          * status - Pod.Status.Phase
+
+          And we use full match to filter value, just like syntax of 'like' in mysql
+
+          e.g.
+
+          '/service/{namespace}/{service}/pod?filterBy=name,kube-' will filter all pods which ObjectMeta.name contains string 'kube-'
+        default: name,kube-
+      - in: query
+        name: sortBy
+        type: string
+        description: |
+          The 'sortBy' holds the name of property that should be sorted and whether order should be asc or desc.
+
+          Like 'd,param1' means sort by param1 in desc. The valid sort parameters are same as 'filterBy'
+
+          e.g.
+
+          '/service/{namespace}/{service}/pod?sortBy=d,name'
+        default: d,name
+      - in: query
+        name: itemsPerPage
+        type: integer
+        description: The number of items per page
+        default: 2
+      - in: query
+        name: page
+        type: integer
+        description: The page number, which must starts from '1'
+        default: 1
+        minimum: 1
+      responses:
+        200:
+          description: ok
+          schema:
+            $ref: "#/definitions/PodList"
+        500:
+          description: Internal Server Error
+
 definitions:
   LoginSpec:
     type: object
@@ -2549,4 +2877,214 @@ definitions:
       storageClass:
         type: string
 
+  StorageClass:
+    type: object
+    description: SecretDetail API resource provides mechanisms to inject containers with configuration data while keeping containers agnostic of Kubernetes
+    required:
+    - objectMeta
+    - typeMeta
+    - provisioner
+    - parameters
+    properties:
+      objectMeta:
+        $ref: "#/definitions/ObjectMeta"
+      typeMeta:
+        $ref: "#/definitions/TypeMeta"
+      provisioner:
+        type: string
+        description: |
+          Provisioner is the driver expected to handle this StorageClass.
+          For example: "kubernetes.io/gce-pd" or "kubernetes.io/aws-ebs".
+          This value may not be empty
+      parameters:
+        type: object
+        description: Parameters holds parameters for the provisioner
+        additionalProperties:
+          type: string
 
+  StorageClassList:
+    type: object
+    description: StorageClassList contains a list of StorageClass in the cluster.
+    required:
+    - listMeta
+    - items
+    - errors
+    properties:
+      listMeta:
+        $ref: "#/definitions/ListMeta"
+      items:
+        type: array
+        items:
+          $ref: "#/definitions/StorageClass"
+      errors:
+        type: array
+        items:
+          type: string
+          description: List of non-critical errors, that occurred during resource retrieval
+
+  ServicePort:
+    type: object
+    description: ServicePort is a pair of port and protocol - service endpoint
+    required:
+    - port
+    - protocol
+    - nodePort
+    properties:
+      port:
+        type: integer
+        format: int32
+        description: Positive port number
+      protocol:
+        type: string
+        description: Protocol defines network protocols supported for things like container ports
+        enum: ["TCP", "UDP"]
+      nodePort:
+        type: integer
+        format: int32
+        description: The port on each node on which the service is exposed
+
+  Endpoint:
+    type: object
+    description: Endpoint describes an endpoint that is host and a list of available ports for that host
+    required:
+    - host
+    - ports
+    properties:
+      host:
+        type: string
+        description: Hostname, either as a domain name or IP address
+      ports:
+        $ref: "#/definitions/ServicePort"
+
+  EndpointList:
+    type: object
+    required:
+    - listMeta
+    - endpoints
+    properties:
+      listMeta:
+        $ref: "#/definitions/ListMeta"
+      endpoints:
+        type: array
+        items:
+          $ref: "#/definitions/Endpoint"
+
+  Service:
+    type: object
+    description: SecretDetail API resource provides mechanisms to inject containers with configuration data while keeping containers agnostic of Kubernetes
+    required:
+    - objectMeta
+    - typeMeta
+    - internalEndpoint
+    - externalEndpoints
+    - selector
+    - type
+    - clusterIP
+    properties:
+      objectMeta:
+        $ref: "#/definitions/ObjectMeta"
+      typeMeta:
+        $ref: "#/definitions/TypeMeta"
+      internalEndpoint:
+        $ref: "#/definitions/Endpoint"
+      externalEndpoints:
+        type: array
+        items:
+          $ref: "#/definitions/Endpoint"
+      selector:
+        type: object
+        description: Label selector of the service
+        additionalProperties:
+          type: string
+      type:
+        type: string
+        description: Service Type string describes ingress methods for a service
+        enum: ["ClusterIP", "NodePort", "LoadBalance", "ExternalName"]
+      clusterIP:
+        type: string
+        description: |
+          ClusterIP is usually assigned by the master.
+          Valid values:
+          - None (can be specified for headless services when proxying is not required)
+          - empty string ("")
+          - valid IP address
+
+  ServiceList:
+    type: object
+    description: ServiceList contains a list of services in the cluster
+    required:
+    - listMeta
+    - services
+    - errors
+    properties:
+      listMeta:
+        $ref: "#/definitions/ListMeta"
+      services:
+        type: array
+        items:
+          $ref: "#/definitions/Service"
+      errors:
+        type: array
+        items:
+          type: string
+          description: List of non-critical errors, that occurred during resource retrieval
+
+  ServiceDetail:
+    type: object
+    description: Detail of service
+    required:
+    - objectMeta
+    - typeMeta
+    - internalEndpoint
+    - externalEndpoints
+    - endpointList
+    - selector
+    - type
+    - clusterIP
+    - eventList
+    - podList
+    - sessionAffinity
+    - errors
+    properties:
+      objectMeta:
+        $ref: "#/definitions/ObjectMeta"
+      typeMeta:
+        $ref: "#/definitions/TypeMeta"
+      internalEndpoint:
+        $ref: "#/definitions/Endpoint"
+      externalEndpoints:
+        type: array
+        items:
+          $ref: "#/definitions/Endpoint"
+      endpointList:
+        $ref: "#/definitions/EndpointList"
+      selector:
+        type: object
+        description: Label selector of the service
+        additionalProperties:
+          type: string
+      type:
+        type: string
+        description: Service Type string describes ingress methods for a service
+        enum: ["ClusterIP", "NodePort", "LoadBalance", "ExternalName"]
+      clusterIP:
+        type: string
+        description: |
+          ClusterIP is usually assigned by the master.
+          Valid values:
+          - None (can be specified for headless services when proxying is not required)
+          - empty string ("")
+          - valid IP address
+      eventList:
+        $ref: "#/definitions/EventList"
+      podList:
+        $ref: "#/definitions/PodList"
+      sessionAffinity:
+        type: string
+        description: Session Affinity Type string
+        enum: ["ClientIP", "None"]
+      errors:
+        type: array
+        items:
+          type: string
+          description: List of non-critical errors, that occurred during resource retrieval
