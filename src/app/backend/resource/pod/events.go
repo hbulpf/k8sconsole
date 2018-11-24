@@ -1,4 +1,4 @@
-package service
+package pod
 
 import (
 	"github.com/golang/glog"
@@ -9,19 +9,21 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func GetServiceEvents(client kubernetes.Interface, dsQuery * dataselect.DataSelectQuery,
+func GetEventsForPod(client kubernetes.Interface, dsQuery *dataselect.DataSelectQuery,
 	namespace, name string) (*common.EventList, error) {
 	eventList := common.EventList{
 		Events: make([]common.Event, 0),
 		ListMeta: api.ListMeta{TotalItems: 0},
 	}
 
-	serviceEvents, err := event.GetEvents(client, namespace, name)
+	podEvents, err := event.GetPodEvents(client, namespace, name)
 	if err != nil {
 		return &eventList, err
 	}
 
-	eventList = event.CreateEventList(event.FillEventsType(serviceEvents), dsQuery)
-	glog.Info("Found %d events related to %s service in %s namespace", len(eventList.Events), name, namespace)
+	eventList = event.CreateEventList(podEvents, dsQuery)
+
+	glog.Infof("Found %d events related to %s pod in %s namespace", len(eventList.Events), name, namespace)
+
 	return &eventList, nil
 }

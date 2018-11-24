@@ -17,7 +17,10 @@ import (
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/persistentvolumeclaim"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/pod"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/secret"
+	"github.com/wzt3309/k8sconsole/src/app/backend/resource/service"
+	"github.com/wzt3309/k8sconsole/src/app/backend/resource/storageclass"
 	"golang.org/x/net/xsrftoken"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -56,6 +59,18 @@ func CreateHTTPAPIHandler(cManager clientApi.ClientManager, authManager authApi.
 		apiV1Ws.GET("/pod/{namespace}").
 			To(apiHandler.handleGetPods).
 			Writes(pod.PodList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/pod/{namespace}/{pod}").
+			To(apiHandler.handleGetPodDetail).
+			Writes(pod.PodDetail{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/pod/{namespace}/{pod}/event").
+			To(apiHandler.handleGetPodEvents).
+			Writes(common.EventList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/pod/{namespace}/{pod}/persistentvolumeclaim").
+			To(apiHandler.handleGetPodPersistentVolumeClaims).
+			Writes(persistentvolumeclaim.PersistentVolumeClaimList{}))
 
 	apiV1Ws.Route(
 		apiV1Ws.POST("/namespace").
@@ -107,6 +122,23 @@ func CreateHTTPAPIHandler(cManager clientApi.ClientManager, authManager authApi.
 			Writes(configmap.ConfigMapDetail{}))
 
 	apiV1Ws.Route(
+		apiV1Ws.GET("/service").
+			To(apiHandler.handleGetServiceList).
+			Writes(service.ServiceList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/service/{namespace}").
+			To(apiHandler.handleGetServiceList).
+			Writes(service.ServiceList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/service/{namespace}/{service}").
+			To(apiHandler.handleGetServiceDetail).
+			Writes(service.ServiceDetail{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/service/{namespace}/{service}/pod").
+			To(apiHandler.handleGetServicePods).
+			Writes(pod.PodList{}))
+
+	apiV1Ws.Route(
 		apiV1Ws.GET("/node").
 			To(apiHandler.handleGetNodeList).
 			Writes(node.NodeList{}))
@@ -145,6 +177,18 @@ func CreateHTTPAPIHandler(cManager clientApi.ClientManager, authManager authApi.
 			To(apiHandler.handleGetPersistentVolumeClaimDetail).
 			Writes(persistentvolumeclaim.PersistentVolumeClaimDetail{}))
 
+	apiV1Ws.Route(
+		apiV1Ws.GET("/storageclass").
+			To(apiHandler.handleGetStorageClassList).
+			Writes(storageclass.StorageClassList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/storageclass/{storageclass}").
+			To(apiHandler.handleGetStorageClass).
+			Writes(storageclass.StorageClass{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/storageclass/{storageclass}/persistentvolume").
+			To(apiHandler.handleGetStorageClassPersistentVolumes).
+			Writes(persistentvolume.PersistentVolumeList{}))
 	return wsContainer, nil
 }
 
@@ -168,6 +212,62 @@ func (apiHandler *APIHandler) handleGetPods(request *restful.Request, response *
 		kcErrors.HandleInternalError(response, err)
 	}
 
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetPodDetail(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("pod")
+	result, err := pod.GetPodDetail(k8sClient, namespace, name)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+	}
+
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetPodEvents(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	log.Println("Getting events related to a pod in namespace")
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("pod")
+	dsQuery := parseDataSelectPathParameter(request)
+	result, err := pod.GetEventsForPod(k8sClient, dsQuery, namespace, name)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetPodPersistentVolumeClaims(request *restful.Request,
+	response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	name := request.PathParameter("pod")
+	namespace := request.PathParameter("namespace")
+	dataSelect := parseDataSelectPathParameter(request)
+	result, err := persistentvolumeclaim.GetPodPersistentVolumeClaims(k8sClient,
+		namespace, name, dataSelect)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
 	response.WriteHeaderAndEntity(http.StatusOK, result)
 }
 
@@ -369,6 +469,59 @@ func (apiHandler *APIHandler) handleGetConfigMapDetail(request *restful.Request,
 	response.WriteHeaderAndEntity(http.StatusOK, result)
 }
 
+func (apiHandler *APIHandler) handleGetServiceList(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := parseNamespacePathParameter(request)
+	dsQuery := parseDataSelectPathParameter(request)
+	result, err := service.GetServiceList(k8sClient, namespace, dsQuery)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetServiceDetail(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("service")
+	dsQuery := parseDataSelectPathParameter(request)
+	result, err := service.GetServiceDetail(k8sClient, namespace, name, dsQuery)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetServicePods(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("service")
+	dsQuery := parseDataSelectPathParameter(request)
+	result, err := service.GetServicePods(k8sClient, namespace, name, dsQuery)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
 func (apiHandler *APIHandler) handleGetNodeEvents(request *restful.Request, response *restful.Response) {
 	k8sClient, err := apiHandler.cManager.Client(request)
 	if err != nil {
@@ -464,6 +617,55 @@ func (apiHandler *APIHandler) handleGetPersistentVolumeClaimDetail(request *rest
 	namespace := request.PathParameter("namespace")
 	name := request.PathParameter("name")
 	result, err := persistentvolumeclaim.GetPersistentVolumeClaimDetail(k8sClient, namespace, name)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetStorageClassList(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	dsQuery := parseDataSelectPathParameter(request)
+	result, err := storageclass.GetStorageClassList(k8sClient, dsQuery)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetStorageClass(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	name := request.PathParameter("storageclass")
+	result, err := storageclass.GetStorageClassDetail(k8sClient, name)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetStorageClassPersistentVolumes(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	name := request.PathParameter("storageclass")
+	dsQuery := parseDataSelectPathParameter(request)
+	result, err := persistentvolume.GetStorageClassPersistentVolumes(k8sClient, name, dsQuery)
 	if err != nil {
 		kcErrors.HandleInternalError(response, err)
 		return
