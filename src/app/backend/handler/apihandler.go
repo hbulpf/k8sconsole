@@ -7,18 +7,28 @@ import (
 	authApi "github.com/wzt3309/k8sconsole/src/app/backend/auth/api"
 	clientApi "github.com/wzt3309/k8sconsole/src/app/backend/client/api"
 	kcErrors "github.com/wzt3309/k8sconsole/src/app/backend/errors"
+	"github.com/wzt3309/k8sconsole/src/app/backend/resource/cluster"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/common"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/configmap"
+	"github.com/wzt3309/k8sconsole/src/app/backend/resource/container"
+	"github.com/wzt3309/k8sconsole/src/app/backend/resource/controller"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/dataselect"
+	"github.com/wzt3309/k8sconsole/src/app/backend/resource/deployment"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/event"
+	"github.com/wzt3309/k8sconsole/src/app/backend/resource/logs"
 	ns "github.com/wzt3309/k8sconsole/src/app/backend/resource/namespace"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/node"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/persistentvolume"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/persistentvolumeclaim"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/pod"
+	"github.com/wzt3309/k8sconsole/src/app/backend/resource/rbacrolebindings"
+	"github.com/wzt3309/k8sconsole/src/app/backend/resource/rbacroles"
+	"github.com/wzt3309/k8sconsole/src/app/backend/resource/replicaset"
+	"github.com/wzt3309/k8sconsole/src/app/backend/resource/replicationcontroller"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/secret"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/service"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/storageclass"
+	"github.com/wzt3309/k8sconsole/src/app/backend/validation"
 	"golang.org/x/net/xsrftoken"
 	"log"
 	"net/http"
@@ -52,6 +62,61 @@ func CreateHTTPAPIHandler(cManager clientApi.ClientManager, authManager authApi.
 			Writes(api.CsrfToken{}))
 
 	apiV1Ws.Route(
+		apiV1Ws.GET("/replicationcontroller").
+			To(apiHandler.handleGetReplicationControllerList).
+			Writes(replicationcontroller.ReplicationControllerList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/replicationcontroller/{namespace}").
+			To(apiHandler.handleGetReplicationControllerList).
+			Writes(replicationcontroller.ReplicationControllerList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/replicationcontroller/{namespace}/{replicationController}").
+			To(apiHandler.handleGetReplicationControllerDetail).
+			Writes(replicationcontroller.ReplicationControllerDetail{}))
+	apiV1Ws.Route(
+		apiV1Ws.POST("/replicationcontroller/{namespace}/{replicationController}/update/pod").
+			To(apiHandler.handleUpdateReplicasCount).
+			Reads(replicationcontroller.ReplicationControllerSpec{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/replicationcontroller/{namespace}/{replicationController}/pod").
+			To(apiHandler.handleGetReplicationControllerPods).
+			Writes(pod.PodList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/replicationcontroller/{namespace}/{replicationController}/event").
+			To(apiHandler.handleGetReplicationControllerEvents).
+			Writes(common.EventList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/replicationcontroller/{namespace}/{replicationController}/service").
+			To(apiHandler.handleGetReplicationControllerServices).
+			Writes(service.ServiceList{}))
+
+	apiV1Ws.Route(
+		apiV1Ws.GET("/cluster").
+			To(apiHandler.handleGetCluster).
+			Writes(cluster.Cluster{}))
+
+	apiV1Ws.Route(
+		apiV1Ws.GET("/replicaset").
+			To(apiHandler.handleGetReplicaSets).
+			Writes(replicaset.ReplicaSetList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/replicaset/{namespace}").
+			To(apiHandler.handleGetReplicaSets).
+			Writes(replicaset.ReplicaSetList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/replicaset/{namespace}/{replicaSet}").
+			To(apiHandler.handleGetReplicaSetDetail).
+			Writes(replicaset.ReplicaSetDetail{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/replicaset/{namespace}/{replicaSet}/pod").
+			To(apiHandler.handleGetReplicaSetPods).
+			Writes(pod.PodList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/replicaset/{namespace}/{replicaSet}/event").
+			To(apiHandler.handleGetReplicaSetEvents).
+			Writes(common.EventList{}))
+
+	apiV1Ws.Route(
 		apiV1Ws.GET("/pod").
 			To(apiHandler.handleGetPods).
 			Writes(pod.PodList{}))
@@ -64,6 +129,10 @@ func CreateHTTPAPIHandler(cManager clientApi.ClientManager, authManager authApi.
 			To(apiHandler.handleGetPodDetail).
 			Writes(pod.PodDetail{}))
 	apiV1Ws.Route(
+		apiV1Ws.GET("/pod/{namespace}/{pod}/container").
+			To(apiHandler.handleGetPodContainers).
+			Writes(container.PodContainerList{}))
+	apiV1Ws.Route(
 		apiV1Ws.GET("/pod/{namespace}/{pod}/event").
 			To(apiHandler.handleGetPodEvents).
 			Writes(common.EventList{}))
@@ -71,6 +140,27 @@ func CreateHTTPAPIHandler(cManager clientApi.ClientManager, authManager authApi.
 		apiV1Ws.GET("/pod/{namespace}/{pod}/persistentvolumeclaim").
 			To(apiHandler.handleGetPodPersistentVolumeClaims).
 			Writes(persistentvolumeclaim.PersistentVolumeClaimList{}))
+
+	apiV1Ws.Route(
+		apiV1Ws.GET("/deployment").
+			To(apiHandler.handleGetDeployments).
+			Writes(deployment.DeploymentList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/deployment/{namespace}").
+			To(apiHandler.handleGetDeployments).
+			Writes(deployment.DeploymentList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/deployment/{namespace}/{deployment}").
+			To(apiHandler.handleGetDeploymentDetail).
+			Writes(deployment.DeploymentDetail{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/deployment/{namespace}/{deployment}/event").
+			To(apiHandler.handleGetDeploymentEvents).
+			Writes(common.EventList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/deployment/{namespace}/{deployment}/oldreplicaset").
+			To(apiHandler.handleGetDeploymentOldReplicaSets).
+			Writes(replicaset.ReplicaSetList{}))
 
 	apiV1Ws.Route(
 		apiV1Ws.POST("/namespace").
@@ -156,6 +246,19 @@ func CreateHTTPAPIHandler(cManager clientApi.ClientManager, authManager authApi.
 			Writes(pod.PodList{}))
 
 	apiV1Ws.Route(
+		apiV1Ws.GET("/rbac/role").
+			To(apiHandler.handleGetRbacRoleList).
+			Writes(rbacroles.RbacRoleList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/rbac/rolebinding").
+			To(apiHandler.handleGetRbacRoleBindingList).
+			Writes(rbacrolebindings.RbacRoleBindingList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/rbac/status").
+			To(apiHandler.handleRbacStatus).
+			Writes(validation.RbacStatus{}))
+
+	apiV1Ws.Route(
 		apiV1Ws.GET("/persistentvolume").
 			To(apiHandler.handleGetPersistentVolumeList).
 			Writes(persistentvolume.PersistentVolumeList{}))
@@ -189,6 +292,23 @@ func CreateHTTPAPIHandler(cManager clientApi.ClientManager, authManager authApi.
 		apiV1Ws.GET("/storageclass/{storageclass}/persistentvolume").
 			To(apiHandler.handleGetStorageClassPersistentVolumes).
 			Writes(persistentvolume.PersistentVolumeList{}))
+
+	apiV1Ws.Route(
+		apiV1Ws.GET("/log/source/{namespace}/{resourceName}/{resourceType}").
+			To(apiHandler.handleLogSource).
+			Writes(controller.LogSources{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/log/{namespace}/{pod}").
+			To(apiHandler.handleLogs).
+			Writes(logs.LogDetails{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/log/{namespace}/{pod}/{container}").
+			To(apiHandler.handleLogs).
+			Writes(logs.LogDetails{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/log/file/{namespace}/{pod}/{container}").
+			To(apiHandler.handleLogFile).
+			Writes(logs.LogDetails{}))
 	return wsContainer, nil
 }
 
@@ -196,6 +316,230 @@ func (apiHandler *APIHandler) handleGetCsrfToken(request *restful.Request, respo
 	action := request.PathParameter("action")
 	token := xsrftoken.Generate(apiHandler.cManager.CSRFKey(), "none", action)
 	response.WriteHeaderAndEntity(http.StatusOK, api.CsrfToken{Token: token})
+}
+
+func (apiHandler *APIHandler) handleGetReplicationControllerList(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := parseNamespacePathParameter(request)
+	dsQuery := parseDataSelectPathParameter(request)
+	result, err := replicationcontroller.GetReplicationControllerList(k8sClient, namespace, dsQuery)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetReplicationControllerDetail(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("replicationController")
+	result, err := replicationcontroller.GetReplicationControllerDetail(k8sClient, namespace, name)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleUpdateReplicasCount(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("replicationController")
+	spec := new(replicationcontroller.ReplicationControllerSpec)
+	if err := request.ReadEntity(spec); err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	if err := replicationcontroller.UpdateReplicasCount(k8sClient, namespace, name, spec); err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	response.WriteHeader(http.StatusOK)
+}
+
+func (apiHandler *APIHandler) handleGetReplicationControllerPods(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	rc := request.PathParameter("replicationController")
+	dataSelect := parseDataSelectPathParameter(request)
+	result, err := replicationcontroller.GetReplicationControllerPods(k8sClient, dataSelect, rc, namespace)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetReplicationControllerEvents(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("replicationController")
+	dataSelect := parseDataSelectPathParameter(request)
+	result, err := event.GetResourceEvents(k8sClient, dataSelect, namespace, name)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetReplicationControllerServices(request *restful.Request,
+	response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("replicationController")
+	dataSelect := parseDataSelectPathParameter(request)
+	result, err := replicationcontroller.GetReplicationControllerServices(k8sClient, dataSelect, namespace, name)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetCluster(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	dsQuery := parseDataSelectPathParameter(request)
+	result, err := cluster.GetCluster(k8sClient, dsQuery)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetReplicaSets(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := parseNamespacePathParameter(request)
+	dsQuery := parseDataSelectPathParameter(request)
+	result, err := replicaset.GetReplicaSetList(k8sClient, namespace, dsQuery)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetReplicaSetDetail(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	replicaSet := request.PathParameter("replicaSet")
+	result, err := replicaset.GetReplicaSetDetail(k8sClient, namespace, replicaSet)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetReplicaSetPods(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	replicaSet := request.PathParameter("replicaSet")
+	dsQuery := parseDataSelectPathParameter(request)
+	result, err := replicaset.GetReplicaSetPods(k8sClient, dsQuery, replicaSet, namespace)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetReplicaSetServices(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	replicaSet := request.PathParameter("replicaSet")
+	dsQuery := parseDataSelectPathParameter(request)
+	result, err := replicaset.GetReplicaSetServices(k8sClient, dsQuery, namespace, replicaSet)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetReplicaSetEvents(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	replicaSet := request.PathParameter("replicaSet")
+	dsQuery := parseDataSelectPathParameter(request)
+	result, err := event.GetResourceEvents(k8sClient, dsQuery, namespace, replicaSet)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	response.WriteHeaderAndEntity(http.StatusOK, result)
 }
 
 func (apiHandler *APIHandler) handleGetPods(request *restful.Request, response *restful.Response) {
@@ -210,6 +554,7 @@ func (apiHandler *APIHandler) handleGetPods(request *restful.Request, response *
 	result, err := pod.GetPodList(k8sClient, namespace, dsQuery)
 	if err != nil {
 		kcErrors.HandleInternalError(response, err)
+		return
 	}
 
 	response.WriteHeaderAndEntity(http.StatusOK, result)
@@ -227,8 +572,26 @@ func (apiHandler *APIHandler) handleGetPodDetail(request *restful.Request, respo
 	result, err := pod.GetPodDetail(k8sClient, namespace, name)
 	if err != nil {
 		kcErrors.HandleInternalError(response, err)
+		return
 	}
 
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetPodContainers(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("pod")
+	result, err := container.GetPodContainers(k8sClient, namespace, name)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
 	response.WriteHeaderAndEntity(http.StatusOK, result)
 }
 
@@ -264,6 +627,77 @@ func (apiHandler *APIHandler) handleGetPodPersistentVolumeClaims(request *restfu
 	dataSelect := parseDataSelectPathParameter(request)
 	result, err := persistentvolumeclaim.GetPodPersistentVolumeClaims(k8sClient,
 		namespace, name, dataSelect)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetDeployments(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := parseNamespacePathParameter(request)
+	dsQuery := parseDataSelectPathParameter(request)
+	result, err := deployment.GetDeploymentList(k8sClient, namespace, dsQuery)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetDeploymentDetail(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("deployment")
+	result, err := deployment.GetDeploymentDetail(k8sClient, namespace, name)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetDeploymentEvents(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("deployment")
+	dataSelect := parseDataSelectPathParameter(request)
+	result, err := event.GetResourceEvents(k8sClient, dataSelect, namespace, name)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetDeploymentOldReplicaSets(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("deployment")
+	dataSelect := parseDataSelectPathParameter(request)
+	result, err := deployment.GetDeploymentOldReplicaSets(k8sClient, dataSelect, namespace, name)
 	if err != nil {
 		kcErrors.HandleInternalError(response, err)
 		return
@@ -558,6 +992,56 @@ func (apiHandler *APIHandler) handleGetNodePods(request *restful.Request, respon
 	response.WriteHeaderAndEntity(http.StatusOK, result)
 }
 
+func (apiHandler *APIHandler) handleGetRbacRoleList(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	dsQuery := parseDataSelectPathParameter(request)
+	result, err := rbacroles.GetRbacRoleList(k8sClient, dsQuery)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetRbacRoleBindingList(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	dsQuery := parseDataSelectPathParameter(request)
+	result, err := rbacrolebindings.GetRbacRoleBindingList(k8sClient, dsQuery)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleRbacStatus(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	result, err := validation.ValidateRbacStatus(k8sClient)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
 func (apiHandler *APIHandler) handleGetPersistentVolumeList(request *restful.Request, response *restful.Response) {
 	k8sClient, err := apiHandler.cManager.Client(request)
 	if err != nil {
@@ -671,6 +1155,91 @@ func (apiHandler *APIHandler) handleGetStorageClassPersistentVolumes(request *re
 		return
 	}
 	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleLogSource(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	resourceName := request.PathParameter("resourceName")
+	resourceType := request.PathParameter("resourceType")
+	namespace := request.PathParameter("namespace")
+	logSources, err := logs.GetLogSources(k8sClient, namespace, resourceName, resourceType)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, logSources)
+}
+
+func (apiHandler *APIHandler) handleLogs(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	podID := request.PathParameter("pod")
+	containerID := request.PathParameter("container")
+
+	refTimestamp := request.QueryParameter("referenceTimestamp")
+	if refTimestamp == "" {
+		refTimestamp = logs.NewestTimestamp
+	}
+
+	refLineNum, err := strconv.Atoi(request.QueryParameter("referenceLineNum"))
+	if err != nil {
+		refLineNum = 0
+	}
+
+	usePreviousLogs := request.QueryParameter("previous") == "true"
+	offsetFrom, err1 := strconv.Atoi(request.QueryParameter("offsetFrom"))
+	offsetTo, err2 := strconv.Atoi(request.QueryParameter("offsetTo"))
+	logFilePosition := request.QueryParameter("logFilePosition")
+
+	logSelector := logs.DefaultSelector
+	if err1 == nil && err2 == nil {
+		logSelector = &logs.Selector{
+			ReferencePoint: logs.LogLineId{
+				LogTimestamp: logs.LogTimestamp(refTimestamp),
+				LineNum: refLineNum,
+			},
+			OffsetFrom: offsetFrom,
+			OffsetTo: offsetTo,
+			LogFilePosition: logFilePosition,
+		}
+	}
+
+	result, err := container.GetLogDetails(k8sClient, namespace, podID, containerID, logSelector, usePreviousLogs)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleLogFile(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	podID := request.PathParameter("pod")
+	containerID := request.PathParameter("container")
+	usePreviousLogs := request.QueryParameter("previous") == "true"
+
+	logStream, err := container.GetLogFile(k8sClient, namespace, podID, containerID, usePreviousLogs)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	handleDownload(response, logStream)
 }
 
 // Get namespaces from path parameter
