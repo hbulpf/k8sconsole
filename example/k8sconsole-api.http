@@ -224,4 +224,154 @@ GET http://localhost:9090/api/v1/service/kube-system/kube-dns/pod
 Accept: application/json
 Cache-Control: no-cache
 
+############################################# Test logs ###########################################
+### Test /log/source/{namespace}/{resourceName}/{resourceType}
+GET http://localhost:9090/api/v1/log/source/kube-system/etcd-minikube/pod
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /log/{namespace}/{pod}
+GET http://localhost:9090/api/v1/log/kube-system/etcd-minikube
+Accept: application/json
+Cache-Control: no-cache
+
+###
+GET http://localhost:9090/api/v1/log/kube-system/etcd-minikube?referenceLineNum=1&offsetFrom=0&offsetTo=22&previous=true
+Accept: application/json
+Cache-Control: no-cache
+
+###
+GET http://localhost:9090/api/v1/log/kube-system/etcd-minikube?referenceTimestamp=2018-11-25T10:18:01.16823409Z&referenceLineNum=1&offsetFrom=1&offsetTo=3
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /log/{namespace}/{pod}/{container}
+GET http://localhost:9090/api/v1/log/kube-system/etcd-minikube/etcd
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /log/file/{namespace}/{pod}/{container}
+GET http://localhost:9090/api/v1/log/file/kube-system/etcd-minikube/etcd
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /log/file/{namespace}/{pod}/{container}
+GET http://localhost:9090/api/v1/log/file/kube-system/etcd-minikube/etcd?previous=true
+Accept: application/json
+Cache-Control: no-cache
+
+############################################# Test rbac ###########################################
+### Test /rbac/role
+GET http://localhost:9090/api/v1/rbac/role
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /rbac/rolebinding
+GET http://localhost:9090/api/v1/rbac/rolebinding?filterBy=name,weave-net
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /rbac/status
+GET http://localhost:9090/api/v1/rbac/status
+Accept: application/json
+Cache-Control: no-cache
+
+############################################# Test cluster ###########################################
+### Test /rbac/cluster
+GET http://localhost:9090/api/v1/cluster
+Accept: application/json
+Cache-Control: no-cache
+
+############################################# Test replicaset ###########################################
+### Test /replicaset
+GET http://localhost:9090/api/v1/replicaset
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /replicaset/{namespace}
+GET http://localhost:9090/api/v1/replicaset/kube-system
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /replicaset/{namespace}/{replicaSet}
+GET http://localhost:9090/api/v1/replicaset/kube-system/kube-dns-b4bd9576
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /replicaset/{namespace}//{replicaSet}/pod
+GET http://localhost:9090/api/v1/replicaset/kube-system/kube-dns-b4bd9576/pod
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /replicaset/{namespace}//{replicaSet}/event
+GET http://localhost:9090/api/v1/replicaset/kube-system/kube-dns-b4bd9576/event
+Accept: application/json
+Cache-Control: no-cache
+
+############################################# Test replication controller ###########################################
+### Test /replicationcontroller
+GET http://localhost:9090/api/v1/replicationcontroller
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /replicationcontroller/{namespace}
+GET http://localhost:9090/api/v1/replicationcontroller/default
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /replicationcontroller/{namespace}/{replicationController}
+GET http://localhost:9090/api/v1/replicationcontroller/default/test
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /replicationcontroller/{namespace}/{replicationController}/update/pod
+POST http://localhost:9090/api/v1/replicationcontroller/default/test/update/pod
+Content-Type: application/json
+Cache-Control: no-cache
+
+{
+  "replicas": 3
+}
+
+### Test /replicationcontroller/{namespace}/{replicationController}/pod
+GET http://localhost:9090/api/v1/replicationcontroller/default/test/pod
+Content-Type: application/json
+Cache-Control: no-cache
+
+### Test /replicationcontroller/{namespace}/{replicationController}/event
+GET http://localhost:9090/api/v1/replicationcontroller/default/test/event
+Content-Type: application/json
+Cache-Control: no-cache
+
+### Test /replicationcontroller/{namespace}/{replicationController}/service
+GET http://localhost:9090/api/v1/replicationcontroller/default/test/service
+Content-Type: application/json
+Cache-Control: no-cache
+
+############################################# Test deployment ###########################################
+### Test /deployment
+GET http://localhost:9090/api/v1/deployment
+Content-Type: application/json
+Cache-Control: no-cache
+
+### Test /deployment/{namespace}
+GET http://localhost:9090/api/v1/deployment/kube-system
+Content-Type: application/json
+Cache-Control: no-cache
+
+### Test /deployment/{namespace}/{deployment}
+GET http://localhost:9090/api/v1/deployment/kube-system/kube-dns
+Content-Type: application/json
+Cache-Control: no-cache
+
+### Test /deployment/{namespace}/{deployment}/event
+GET http://localhost:9090/api/v1/deployment/kube-system/kube-dns/event
+Content-Type: application/json
+Cache-Control: no-cache
+
+### Test /deployment/{namespace}/{deployment}
+GET http://localhost:9090/api/v1/deployment/kube-system/kube-dns/oldreplicaset
+Content-Type: application/json
+Cache-Control: no-cache
+
 ###
