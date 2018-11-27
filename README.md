@@ -1,4 +1,5 @@
 # K8sConsole / [中文版](./README_cn.md)
+[![Build Status](https://travis-ci.org/hbulpf/k8sconsole.svg?branch=master)](https://travis-ci.org/hbulpf/k8sconsole)
 > A web ui which extends kubernetes dashboard
 
 ## Quick Start
