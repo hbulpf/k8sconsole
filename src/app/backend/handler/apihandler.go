@@ -15,6 +15,7 @@ import (
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/dataselect"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/deployment"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/event"
+	"github.com/wzt3309/k8sconsole/src/app/backend/resource/ingress"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/logs"
 	ns "github.com/wzt3309/k8sconsole/src/app/backend/resource/namespace"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/node"
@@ -60,6 +61,36 @@ func CreateHTTPAPIHandler(cManager clientApi.ClientManager, authManager authApi.
 		apiV1Ws.GET("csrftoken/{action}").
 			To(apiHandler.handleGetCsrfToken).
 			Writes(api.CsrfToken{}))
+
+	apiV1Ws.Route(
+		apiV1Ws.POST("/deploy").
+			To(apiHandler.handleDeploy).
+			Reads(deployment.AppDeploymentSpec{}).
+			Writes(deployment.AppDeploymentSpec{}))
+	apiV1Ws.Route(
+		apiV1Ws.POST("/deployfromfile").
+			To(apiHandler.handleDeployFromFile).
+			Reads(deployment.AppDeploymentFromFileSpec{}).
+			Writes(deployment.AppDeploymentFromFileResponse{}))
+	apiV1Ws.Route(
+		apiV1Ws.POST("/deploy/validate/name").
+			To(apiHandler.handleNameValidity).
+			Reads(validation.AppNameValiditySpec{}).
+			Writes(validation.AppNameValidity{}))
+	apiV1Ws.Route(
+		apiV1Ws.POST("/deploy/validate/imagereference").
+			To(apiHandler.handleImageReferenceValidity).
+			Reads(validation.ImageReferenceValiditySpec{}).
+			Writes(validation.ImageReferenceValidity{}))
+	apiV1Ws.Route(
+		apiV1Ws.POST("/deploy/validate/protocol").
+			To(apiHandler.handleProtocolValidity).
+			Reads(validation.ProtocolValiditySpec{}).
+			Writes(validation.ProtocolValidity{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/deploy/protocols").
+			To(apiHandler.handleGetAvailableProcotols).
+			Writes(deployment.Protocols{}))
 
 	apiV1Ws.Route(
 		apiV1Ws.GET("/replicationcontroller").
@@ -229,6 +260,19 @@ func CreateHTTPAPIHandler(cManager clientApi.ClientManager, authManager authApi.
 			Writes(pod.PodList{}))
 
 	apiV1Ws.Route(
+		apiV1Ws.GET("/ingress").
+			To(apiHandler.handleGetIngressList).
+			Writes(ingress.IngressList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/ingress/{namespace}").
+			To(apiHandler.handleGetIngressList).
+			Writes(ingress.IngressList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/ingress/{namespace}/{name}").
+			To(apiHandler.handleGetIngressDetail).
+			Writes(ingress.IngressDetail{}))
+
+	apiV1Ws.Route(
 		apiV1Ws.GET("/node").
 			To(apiHandler.handleGetNodeList).
 			Writes(node.NodeList{}))
@@ -316,6 +360,106 @@ func (apiHandler *APIHandler) handleGetCsrfToken(request *restful.Request, respo
 	action := request.PathParameter("action")
 	token := xsrftoken.Generate(apiHandler.cManager.CSRFKey(), "none", action)
 	response.WriteHeaderAndEntity(http.StatusOK, api.CsrfToken{Token: token})
+}
+
+func (apiHandler *APIHandler) handleDeploy(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	appDeploymentSpec := new(deployment.AppDeploymentSpec)
+	if err := request.ReadEntity(appDeploymentSpec); err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	if err := deployment.DeployApp(appDeploymentSpec, k8sClient); err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusCreated, appDeploymentSpec)
+}
+
+func (apiHandler *APIHandler) handleDeployFromFile(request *restful.Request, response *restful.Response) {
+	cfg, err := apiHandler.cManager.Config(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	deploymentSpec := new(deployment.AppDeploymentFromFileSpec)
+	if err := request.ReadEntity(deploymentSpec); err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	isDeployed, err := deployment.DeployAppFromFile(cfg, deploymentSpec)
+	if !isDeployed {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	errorMessage := ""
+	if err != nil {
+		errorMessage = err.Error()
+	}
+
+	response.WriteHeaderAndEntity(http.StatusCreated, deployment.AppDeploymentFromFileResponse{
+		Name:    deploymentSpec.Name,
+		Content: deploymentSpec.Content,
+		Error:   errorMessage,
+	})
+}
+
+func (apiHandler *APIHandler) handleNameValidity(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	spec := new(validation.AppNameValiditySpec)
+	if err := request.ReadEntity(spec); err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	validity, err := validation.ValidateAppName(spec, k8sClient)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	response.WriteHeaderAndEntity(http.StatusOK, validity)
+}
+
+func (APIHandler *APIHandler) handleImageReferenceValidity(request *restful.Request, response *restful.Response) {
+	spec := new(validation.ImageReferenceValiditySpec)
+	if err := request.ReadEntity(spec); err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	validity, err := validation.ValidateImageReference(spec)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, validity)
+}
+
+func (apiHandler *APIHandler) handleProtocolValidity(request *restful.Request, response *restful.Response) {
+	spec := new(validation.ProtocolValiditySpec)
+	if err := request.ReadEntity(spec); err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, validation.ValidateProtocol(spec))
+}
+
+func (apiHandler *APIHandler) handleGetAvailableProcotols(request *restful.Request, response *restful.Response) {
+	response.WriteHeaderAndEntity(http.StatusOK, deployment.GetAvailableProtocols())
 }
 
 func (apiHandler *APIHandler) handleGetReplicationControllerList(request *restful.Request, response *restful.Response) {
@@ -949,6 +1093,40 @@ func (apiHandler *APIHandler) handleGetServicePods(request *restful.Request, res
 	name := request.PathParameter("service")
 	dsQuery := parseDataSelectPathParameter(request)
 	result, err := service.GetServicePods(k8sClient, namespace, name, dsQuery)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetIngressList(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	dataSelect := parseDataSelectPathParameter(request)
+	namespace := parseNamespacePathParameter(request)
+	result, err := ingress.GetIngressList(k8sClient, namespace, dataSelect)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetIngressDetail(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("name")
+	result, err := ingress.GetIngressDetail(k8sClient, namespace, name)
 	if err != nil {
 		kcErrors.HandleInternalError(response, err)
 		return
