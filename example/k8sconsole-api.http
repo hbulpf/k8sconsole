@@ -549,4 +549,31 @@ Cache-Control: no-cache
 PUT http://localhost:9090/api/v1/cronjob/default/test/trigger
 Content-Type: application/json
 Cache-Control: no-cache
+
+############################################# Test statefulset ###########################################
+### Test /statefulset
+GET http://localhost:9090/api/v1/statefulset
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /statefulset/{namespace}
+GET http://localhost:9090/api/v1/statefulset/default
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /statefulset/{namespace}/{statefulset}
+GET http://localhost:9090/api/v1/statefulset/default/test
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /statefulset/{namespace}/{statefulset}/pod
+GET http://localhost:9090/api/v1/statefulset/default/test/pod
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /statefulset/{namespace}/{statefulset}/event
+GET http://localhost:9090/api/v1/statefulset/default/test/event
+Accept: application/json
+Cache-Control: no-cache
+
 ###

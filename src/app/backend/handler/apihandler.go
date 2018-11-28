@@ -30,6 +30,7 @@ import (
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/replicationcontroller"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/secret"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/service"
+	"github.com/wzt3309/k8sconsole/src/app/backend/resource/statefulset"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/storageclass"
 	"github.com/wzt3309/k8sconsole/src/app/backend/validation"
 	"golang.org/x/net/xsrftoken"
@@ -288,6 +289,27 @@ func CreateHTTPAPIHandler(cManager clientApi.ClientManager, authManager authApi.
 		apiV1Ws.GET("/configmap/{namespace}/{configmap}").
 			To(apiHandler.handleGetConfigMapDetail).
 			Writes(configmap.ConfigMapDetail{}))
+
+	apiV1Ws.Route(
+		apiV1Ws.GET("/statefulset").
+			To(apiHandler.handleGetStatefulSetList).
+			Writes(statefulset.StatefulSetList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/statefulset/{namespace}").
+			To(apiHandler.handleGetStatefulSetList).
+			Writes(statefulset.StatefulSetList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/statefulset/{namespace}/{statefulset}").
+			To(apiHandler.handleGetStatefulSetDetail).
+			Writes(statefulset.StatefulSetDetail{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/statefulset/{namespace}/{statefulset}/pod").
+			To(apiHandler.handleGetStatefulSetPods).
+			Writes(pod.PodList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/statefulset/{namespace}/{statefulset}/event").
+			To(apiHandler.handleGetStatefulSetEvents).
+			Writes(common.EventList{}))
 
 	apiV1Ws.Route(
 		apiV1Ws.GET("/service").
@@ -1245,6 +1267,77 @@ func (apiHandler *APIHandler) handleGetConfigMapDetail(request *restful.Request,
 	namespace := request.PathParameter("namespace")
 	name := request.PathParameter("configmap")
 	result, err := configmap.GetConfigMapDetail(k8sClient, namespace, name)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetStatefulSetList(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := parseNamespacePathParameter(request)
+	dsQuery := parseDataSelectPathParameter(request)
+	result, err := statefulset.GetStatefulSetList(k8sClient, namespace, dsQuery)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetStatefulSetDetail(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("statefulset")
+	result, err := statefulset.GetStatefulSetDetail(k8sClient, namespace, name)
+
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetStatefulSetPods(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("statefulset")
+	dsQuery := parseDataSelectPathParameter(request)
+	result, err := statefulset.GetStatefulSetPods(k8sClient, dsQuery, name, namespace)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetStatefulSetEvents(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("statefulset")
+	dsQuery := parseDataSelectPathParameter(request)
+	result, err := event.GetResourceEvents(k8sClient, dsQuery, namespace, name)
 	if err != nil {
 		kcErrors.HandleInternalError(response, err)
 		return
