@@ -335,43 +335,162 @@ Cache-Control: no-cache
 
 ### Test /replicationcontroller/{namespace}/{replicationController}/pod
 GET http://localhost:9090/api/v1/replicationcontroller/default/test/pod
-Content-Type: application/json
+Accept: application/json
 Cache-Control: no-cache
 
 ### Test /replicationcontroller/{namespace}/{replicationController}/event
 GET http://localhost:9090/api/v1/replicationcontroller/default/test/event
-Content-Type: application/json
+Accept: application/json
 Cache-Control: no-cache
 
 ### Test /replicationcontroller/{namespace}/{replicationController}/service
 GET http://localhost:9090/api/v1/replicationcontroller/default/test/service
-Content-Type: application/json
+Accept: application/json
 Cache-Control: no-cache
 
 ############################################# Test deployment ###########################################
 ### Test /deployment
 GET http://localhost:9090/api/v1/deployment
-Content-Type: application/json
+Accept: application/json
 Cache-Control: no-cache
 
 ### Test /deployment/{namespace}
 GET http://localhost:9090/api/v1/deployment/kube-system
-Content-Type: application/json
+Accept: application/json
 Cache-Control: no-cache
 
 ### Test /deployment/{namespace}/{deployment}
 GET http://localhost:9090/api/v1/deployment/kube-system/kube-dns
-Content-Type: application/json
+Accept: application/json
 Cache-Control: no-cache
 
 ### Test /deployment/{namespace}/{deployment}/event
 GET http://localhost:9090/api/v1/deployment/kube-system/kube-dns/event
-Content-Type: application/json
+Accept: application/json
 Cache-Control: no-cache
 
 ### Test /deployment/{namespace}/{deployment}
 GET http://localhost:9090/api/v1/deployment/kube-system/kube-dns/oldreplicaset
+Accept: application/json
+Cache-Control: no-cache
+
+############################################# Test ingress ###########################################
+### Test /ingress
+GET http://localhost:9090/api/v1/ingress
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /ingress/{namespace}
+GET http://localhost:9090/api/v1/ingress/default
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /ingress/{namespace}/{name}
+GET http://localhost:9090/api/v1/ingress/default/test
+Accept: application/json
+Cache-Control: no-cache
+
+############################################# Test deployment ###########################################
+### Test /deploy
+POST http://localhost:9090/api/v1/deploy
 Content-Type: application/json
+Cache-Control: no-cache
+
+{
+  "name": "foo-name",
+  "namespace": "default",
+  "containerImage": "nginx:latest",
+  "replicas": 1,
+  "portMappings": [
+    {
+      "port": 8080,
+      "targetPort": 80,
+      "protocol": "TCP"
+    }
+  ],
+  "IsExternal": true,
+  "description": "Test k8sconsole api /deploy",
+  "labels": [
+    {
+      "key": "test-app",
+      "value": "nginx"
+    }
+  ]
+}
+
+### Test /deployfromfile
+POST http://localhost:9090/api/v1/deployfromfile
+Content-Type: application/json
+Cache-Control: no-cache
+
+{
+  "name": "boo-name",
+  "namespace": "default",
+  "content":  "apiVersion: apps/v1beta1\nkind: Deployment\nmetadata:\n  name: nginx-deployment\nspec:\n  replicas: 3\n  template:\n    metadata:\n      labels:\n        app: nginx\n    spec:\n      containers:\n      - name: nginx\n        image: nginx:latest\n        ports:\n        - containerPort: 80",
+  "validate": true
+}
+
+### Test /deploy/validate/name
+POST http://localhost:9090/api/v1/deploy/validate/name
+Content-Type: application/json
+Cache-Control: no-cache
+
+{
+  "name": "kube-dns",
+  "namespace": "kube-system"
+}
+
+### Test /deploy/validate/name
+POST http://localhost:9090/api/v1/deploy/validate/name
+Content-Type: application/json
+Cache-Control: no-cache
+
+{
+  "name": "foo-name",
+  "namespace": "kube-system"
+}
+
+### Test /deploy/validate/imagereference
+POST http://localhost:9090/api/v1/deploy/validate/imagereference
+Content-Type: application/json
+Cache-Control: no-cache
+
+{
+  "reference": "nginx:latest"
+}
+
+### Test /deploy/validate/imagereference
+POST http://localhost:9090/api/v1/deploy/validate/imagereference
+Content-Type: application/json
+Cache-Control: no-cache
+
+{
+  "reference": "docker.io/nginx:latest:2"
+}
+
+### Test /deploy/validate/protocol
+POST http://localhost:9090/api/v1/deploy/validate/protocol
+Content-Type: application/json
+Cache-Control: no-cache
+
+{
+  "protocol": "TCP",
+  "isExternal": true
+}
+
+### Test /deploy/validate/protocol
+POST http://localhost:9090/api/v1/deploy/validate/protocol
+Content-Type: application/json
+Cache-Control: no-cache
+
+{
+  "protocol": "UDP",
+  "isExternal": true
+}
+
+### Test /deploy/validate/protocols
+GET http://localhost:9090/api/v1/deploy/protocols
+Accept: application/json
 Cache-Control: no-cache
 
 ###
