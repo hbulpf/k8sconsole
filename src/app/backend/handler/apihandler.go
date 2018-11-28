@@ -12,10 +12,12 @@ import (
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/configmap"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/container"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/controller"
+	"github.com/wzt3309/k8sconsole/src/app/backend/resource/cronjob"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/dataselect"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/deployment"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/event"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/ingress"
+	"github.com/wzt3309/k8sconsole/src/app/backend/resource/job"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/logs"
 	ns "github.com/wzt3309/k8sconsole/src/app/backend/resource/namespace"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/node"
@@ -192,6 +194,51 @@ func CreateHTTPAPIHandler(cManager clientApi.ClientManager, authManager authApi.
 		apiV1Ws.GET("/deployment/{namespace}/{deployment}/oldreplicaset").
 			To(apiHandler.handleGetDeploymentOldReplicaSets).
 			Writes(replicaset.ReplicaSetList{}))
+
+	apiV1Ws.Route(
+		apiV1Ws.GET("/job").
+			To(apiHandler.handleGetJobList).
+			Writes(job.JobList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/job/{namespace}").
+			To(apiHandler.handleGetJobList).
+			Writes(job.JobList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/job/{namespace}/{name}").
+			To(apiHandler.handleGetJobDetail).
+			Writes(job.JobDetail{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/job/{namespace}/{name}/pod").
+			To(apiHandler.handleGetJobPods).
+			Writes(pod.PodList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/job/{namespace}/{name}/event").
+			To(apiHandler.handleGetJobEvents).
+			Writes(common.EventList{}))
+
+	apiV1Ws.Route(
+		apiV1Ws.GET("/cronjob").
+			To(apiHandler.handleGetCronJobList).
+			Writes(cronjob.CronJobList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/cronjob/{namespace}").
+			To(apiHandler.handleGetCronJobList).
+			Writes(cronjob.CronJobList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/cronjob/{namespace}/{name}").
+			To(apiHandler.handleGetCronJobDetail).
+			Writes(cronjob.CronJobDetail{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/cronjob/{namespace}/{name}/job").
+			To(apiHandler.handleGetCronJobJobs).
+			Writes(job.JobList{}))
+	apiV1Ws.Route(
+		apiV1Ws.GET("/cronjob/{namespace}/{name}/event").
+			To(apiHandler.handleGetCronJobEvents).
+			Writes(common.EventList{}))
+	apiV1Ws.Route(
+		apiV1Ws.PUT("/cronjob/{namespace}/{name}/trigger").
+			To(apiHandler.handleTriggerCronJob))
 
 	apiV1Ws.Route(
 		apiV1Ws.POST("/namespace").
@@ -847,6 +894,164 @@ func (apiHandler *APIHandler) handleGetDeploymentOldReplicaSets(request *restful
 		return
 	}
 	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetJobList(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := parseNamespacePathParameter(request)
+	dsQuery := parseDataSelectPathParameter(request)
+	result, err := job.GetJobList(k8sClient, namespace, dsQuery)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetJobDetail(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("name")
+	result, err := job.GetJobDetail(k8sClient, namespace, name)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetJobPods(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("name")
+	dsQuery := parseDataSelectPathParameter(request)
+	result, err := job.GetJobPods(k8sClient, dsQuery, namespace, name)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetJobEvents(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("name")
+	dataSelect := parseDataSelectPathParameter(request)
+	result, err := job.GetJobEvents(k8sClient, dataSelect, namespace, name)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetCronJobList(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := parseNamespacePathParameter(request)
+	dsQuery := parseDataSelectPathParameter(request)
+	result, err := cronjob.GetCronJobList(k8sClient, namespace, dsQuery)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetCronJobDetail(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("name")
+	dsQuery := parseDataSelectPathParameter(request)
+	result, err := cronjob.GetCronJobDetail(k8sClient, dsQuery, namespace, name)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetCronJobJobs(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("name")
+	dsQuery := parseDataSelectPathParameter(request)
+	result, err := cronjob.GetCronJobJobs(k8sClient, dsQuery, namespace, name)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleGetCronJobEvents(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("name")
+	dataSelect := parseDataSelectPathParameter(request)
+	result, err := cronjob.GetCronJobEvents(k8sClient, dataSelect, namespace, name)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (apiHandler *APIHandler) handleTriggerCronJob(request *restful.Request, response *restful.Response) {
+	k8sClient, err := apiHandler.cManager.Client(request)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+
+	namespace := request.PathParameter("namespace")
+	name := request.PathParameter("name")
+	err = cronjob.TriggerCronJob(k8sClient, namespace, name)
+	if err != nil {
+		kcErrors.HandleInternalError(response, err)
+		return
+	}
+	response.WriteHeader(http.StatusOK)
 }
 
 func (apiHandler *APIHandler) handleCreateNamespace(request *restful.Request, response *restful.Response) {

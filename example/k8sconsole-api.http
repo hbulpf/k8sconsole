@@ -493,4 +493,60 @@ GET http://localhost:9090/api/v1/deploy/protocols
 Accept: application/json
 Cache-Control: no-cache
 
+############################################# Test job ###########################################
+### Test /job
+GET http://localhost:9090/api/v1/job
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /job/{namespace}
+GET http://localhost:9090/api/v1/job/default
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /job/{namespace}/{name}
+GET http://localhost:9090/api/v1/job/default/test
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /job/{namespace}/{name}/pod
+GET http://localhost:9090/api/v1/job/default/test/pod
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /job/{namespace}/{name}/event
+GET http://localhost:9090/api/v1/job/default/test/event
+Accept: application/json
+Cache-Control: no-cache
+
+############################################# Test cornjob ###########################################
+### Test /cronjob
+GET http://localhost:9090/api/v1/cronjob
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /cronjob/{namespace}
+GET http://localhost:9090/api/v1/cronjob/default
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /cronjob/{namespace}/{name}
+GET http://localhost:9090/api/v1/cronjob/default/test
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /cronjob/{namespace}/{name}/pod
+GET http://localhost:9090/api/v1/cronjob/default/test/job
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /cronjob/{namespace}/{name}/event
+GET http://localhost:9090/api/v1/cronjob/default/test/event
+Accept: application/json
+Cache-Control: no-cache
+
+### Test /cronjob/{namespace}/{name}/trigger
+PUT http://localhost:9090/api/v1/cronjob/default/test/trigger
+Content-Type: application/json
+Cache-Control: no-cache
 ###
