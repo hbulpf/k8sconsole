@@ -3,7 +3,7 @@ package client
 import (
 	"fmt"
 	"github.com/wzt3309/k8sconsole/src/app/backend/api"
-	clientApi "github.com/wzt3309/k8sconsole/src/app/backend/client/api"
+	clientapi "github.com/wzt3309/k8sconsole/src/app/backend/client/api"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
@@ -13,12 +13,24 @@ import (
 type resourceVerber struct {
 	client           RESTClient
 	extensionsClient RESTClient
+	appsClient       RESTClient
+	batchClient      RESTClient
+	betaBatchClient  RESTClient
+	storageClient    RESTClient
 }
 
 func (verber *resourceVerber) getRESTClientByType(clientType api.ClientType) RESTClient {
 	switch clientType {
 	case api.ClientTypeExtensionClient:
 		return verber.extensionsClient
+	case api.ClientTypeAppsClient:
+		return verber.appsClient
+	case api.ClientTypeBatchClient:
+		return verber.batchClient
+	case api.ClientTypeBetaBatchClient:
+		return verber.betaBatchClient
+	case api.ClientTypeStorageClient:
+		return verber.storageClient
 	default:
 		return verber.client
 	}
@@ -125,8 +137,9 @@ func (verber *resourceVerber) Delete(kind string, namespaceSet bool, namespace s
 	return req.Do().Error()
 }
 
-func NewResourceVerber(client, extensionsClient RESTClient) clientApi.ResourceVerber {
-	return &resourceVerber{
-		client, extensionsClient,
-	}
+// NewResourceVerber creates a new resource verber that uses the given client for performing operations.
+func NewResourceVerber(client, extensionsClient, appsClient,
+batchClient, betaBatchClient, storageClient RESTClient) clientapi.ResourceVerber {
+	return &resourceVerber{client, extensionsClient, appsClient,
+		batchClient, betaBatchClient, storageClient}
 }

@@ -1,0 +1,18 @@
+{
+  "kind": "Pod",
+  "apiVersion": "v1",
+  "metadata":{
+    "name": "foo-name",
+    "namespace": "default",
+    "labels": {
+      "name": "foo-name"
+    }
+  },
+  "spec": {
+    "containers": [{
+      "name": "nginx",
+      "image": "nginx",
+      "ports": [{"containerPort": 80}]
+    }]
+  }
+}
