@@ -7,6 +7,7 @@ import (
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/common"
 	ds "github.com/wzt3309/k8sconsole/src/app/backend/resource/dataselect"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/event"
+	hpa "github.com/wzt3309/k8sconsole/src/app/backend/resource/horizontalpodautoscaler"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/pod"
 	resourceService "github.com/wzt3309/k8sconsole/src/app/backend/resource/service"
 	"k8s.io/api/core/v1"
@@ -42,6 +43,9 @@ type ReplicationControllerDetail struct {
 
 	// True when the data contains at least one pod with metrics information, false otherwise.
 	HasMetrics bool `json:"hasMetrics"`
+
+	// List of Horizontal Pod AutoScalers targeting this Replication Controller.
+	HorizontalPodAutoscalerList hpa.HorizontalPodAutoscalerList `json:"horizontalPodAutoscalerList"`
 
 	// List of non-critical errors, that occurred during resource retrieval.
 	Errors []error `json:"errors"`
@@ -88,9 +92,14 @@ func GetReplicationControllerDetail(client kubernetes.Interface, namespace, name
 		return nil, criticalError
 	}
 
+	hpas, err := hpa.GetHorizontalPodAutoscalerListForResource(client, namespace, "ReplicationController", name)
+	nonCriticalErrors, criticalError = errors.AppendError(err, nonCriticalErrors)
+	if criticalError != nil {
+		return nil, criticalError
+	}
 
 	replicationControllerDetail := toReplicationControllerDetail(replicationController, *podInfo,
-		*podList, *eventList, *serviceList, nonCriticalErrors)
+		*podList, *eventList, *serviceList, *hpas, nonCriticalErrors)
 	return &replicationControllerDetail, nil
 }
 
@@ -118,7 +127,7 @@ func UpdateReplicasCount(client kubernetes.Interface, namespace, name string, sp
 
 func toReplicationControllerDetail(replicationController *v1.ReplicationController, podInfo common.PodInfo,
 	podList pod.PodList, eventList common.EventList, serviceList resourceService.ServiceList,
-	nonCriticalErrors []error) ReplicationControllerDetail {
+	hpas hpa.HorizontalPodAutoscalerList, nonCriticalErrors []error) ReplicationControllerDetail {
 
 	return ReplicationControllerDetail{
 		ObjectMeta:                  api.NewObjectMeta(replicationController.ObjectMeta),
@@ -130,6 +139,7 @@ func toReplicationControllerDetail(replicationController *v1.ReplicationControll
 		ServiceList:                 serviceList,
 		ContainerImages:             common.GetContainerImages(&replicationController.Spec.Template.Spec),
 		InitContainerImages:         common.GetInitContainerImages(&replicationController.Spec.Template.Spec),
+		HorizontalPodAutoscalerList: hpas,
 		Errors:                      nonCriticalErrors,
 	}
 }

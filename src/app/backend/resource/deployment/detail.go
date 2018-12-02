@@ -7,6 +7,7 @@ import (
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/common"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/dataselect"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/event"
+	hpa "github.com/wzt3309/k8sconsole/src/app/backend/resource/horizontalpodautoscaler"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/pod"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/replicaset"
 	apps "k8s.io/api/apps/v1beta2"
@@ -72,6 +73,9 @@ type DeploymentDetail struct {
 	// List of events related to this Deployment
 	EventList common.EventList `json:"eventList"`
 
+	// List of Horizontal Pod AutoScalers targeting this Deployment
+	HorizontalPodAutoscalerList hpa.HorizontalPodAutoscalerList `json:"horizontalPodAutoscalerList"`
+
 	// List of non-critical errors, that occurred during resource retrieval.
 	Errors []error `json:"errors"`
 }
@@ -118,6 +122,12 @@ func GetDeploymentDetail(client kubernetes.Interface, namespace, deploymentName 
 	}
 
 	eventList, err := event.GetResourceEvents(client, dataselect.DefaultDataSelect, namespace, deploymentName)
+	nonCriticalErrors, criticalError = errors.AppendError(err, nonCriticalErrors)
+	if criticalError != nil {
+		return nil, criticalError
+	}
+
+	hpas, err := hpa.GetHorizontalPodAutoscalerListForResource(client, namespace, "Deployment", deploymentName)
 	nonCriticalErrors, criticalError = errors.AppendError(err, nonCriticalErrors)
 	if criticalError != nil {
 		return nil, criticalError
@@ -175,6 +185,7 @@ func GetDeploymentDetail(client kubernetes.Interface, namespace, deploymentName 
 		NewReplicaSet:               newReplicaSet,
 		RevisionHistoryLimit:        deployment.Spec.RevisionHistoryLimit,
 		EventList:                   *eventList,
+		HorizontalPodAutoscalerList: *hpas,
 		Errors: nonCriticalErrors,
 	}, nil
 }

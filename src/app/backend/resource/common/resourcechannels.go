@@ -3,6 +3,7 @@ package common
 import (
 	"github.com/wzt3309/k8sconsole/src/app/backend/api"
 	apps "k8s.io/api/apps/v1beta2"
+	autoscaling "k8s.io/api/autoscaling/v1"
 	batch "k8s.io/api/batch/v1"
 	batch2 "k8s.io/api/batch/v1beta1"
 	"k8s.io/api/core/v1"
@@ -76,6 +77,9 @@ type ResourceChannels struct {
 
 	// List and error channels to ResourceQuotas
 	ResourceQuotaList ResourceQuotaListChannel
+
+	// List and error channels to HorizontalPodAutoscalers
+	HorizontalPodAutoscalerList HorizontalPodAutoscalerListChannel
 
 	// List and error channels to StorageClasses
 	StorageClassList StorageClassListChannel
@@ -721,6 +725,33 @@ func GetResourceQuotaListChannel(client client.Interface, nsQuery *NamespaceQuer
 
 	go func() {
 		list, err := client.CoreV1().ResourceQuotas(nsQuery.ToRequestParam()).List(api.ListEverything)
+		for i := 0; i < numReads; i++ {
+			channel.List <- list
+			channel.Error <- err
+		}
+	}()
+
+	return channel
+}
+
+// HorizontalPodAutoscalerListChannel is a list and error channels.
+type HorizontalPodAutoscalerListChannel struct {
+	List  chan *autoscaling.HorizontalPodAutoscalerList
+	Error chan error
+}
+
+// GetPodListMetricsChannel returns a pair of channels to MetricsByPod and errors that
+// both must be read numReads times.
+func GetHorizontalPodAutoscalerListChannel(client client.Interface, nsQuery *NamespaceQuery,
+	numReads int) HorizontalPodAutoscalerListChannel {
+	channel := HorizontalPodAutoscalerListChannel{
+		List:  make(chan *autoscaling.HorizontalPodAutoscalerList, numReads),
+		Error: make(chan error, numReads),
+	}
+
+	go func() {
+		list, err := client.AutoscalingV1().HorizontalPodAutoscalers(nsQuery.ToRequestParam()).
+			List(api.ListEverything)
 		for i := 0; i < numReads; i++ {
 			channel.List <- list
 			channel.Error <- err
