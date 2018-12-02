@@ -64,3 +64,7 @@
 [[constraint]]
   name = "github.com/docker/distribution"
   version = "2.6.2"
+
+[[constraint]]
+  name = "gopkg.in/igm/sockjs-go.v2"
+  branch = "v2"

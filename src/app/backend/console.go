@@ -113,6 +113,7 @@ func main() {
 	}
 
 	http.Handle("/api/", apiHandler)
+	http.Handle("/api/sockjs/", handler.CreateAttachHandler("/api/sockjs"))
 
 	// TODO(wzt3309) listening on https
 	glog.Infof("Serving insecurely on HTTP port: %d", args.Holder.GetInsecurePort())

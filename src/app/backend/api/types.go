@@ -66,31 +66,32 @@ type ResourceKind string
 
 // List of all resource kinds
 const (
-	ResourceKindConfigMap  							= "configmap"
-	ResourceKindDaemonSet  							= "daemonset"
-	ResourceKindDeployment 							= "deployment"
-	ResourceKindEvent										= "event"
-	ResourceKindIngress									= "ingress"
-	ResourceKindJob											= "job"
-	ResourceKindCronJob									= "cronjob"
-	ResourceKindLimitRange							= "limitrange"
-	ResourceKindNamespace  							= "namespace"
-	ResourceKindNode       							= "node"
-	ResourceKindPersistentVolumeClaim		= "persistentvolumeclaim"
-	ResourceKindPersistentVolume				= "persistentvolume"
-	ResourceKindPod        							= "pod"
-	ResourceKindReplicaSet 							= "replicaset"
-	ResourceKindReplicationController 	= "replicationcontroller"
-	ResourceKindResourceQuota						= "resourcequota"
-	ResourceKindSecret     							= "secret"
-	ResourceKindService    							= "service"
-	ResourceKindStatefulSet							= "statefulset"
-	ResourceKindStorageClass						= "storageclass"
-	ResourceKindRbacRole								= "role"
-	ResourceKindRbacClusterRole					= "clusterrole"
-	ResourceKindRbacRoleBinding					= "rolebinding"
-	ResourceKindRbacClusterRoleBinding	= "clusterrolebinding"
-	ResourceKindEndpoint								= "endpoint"
+	ResourceKindConfigMap  							 = "configmap"
+	ResourceKindDaemonSet  							 = "daemonset"
+	ResourceKindDeployment 							 = "deployment"
+	ResourceKindEvent										 = "event"
+	ResourceKindHorizontalPodAutoscaler = "horizontalpodautoscaler"
+	ResourceKindIngress									 = "ingress"
+	ResourceKindJob											 = "job"
+	ResourceKindCronJob									 = "cronjob"
+	ResourceKindLimitRange							 = "limitrange"
+	ResourceKindNamespace  							 = "namespace"
+	ResourceKindNode       							 = "node"
+	ResourceKindPersistentVolumeClaim		 = "persistentvolumeclaim"
+	ResourceKindPersistentVolume				 = "persistentvolume"
+	ResourceKindPod        							 = "pod"
+	ResourceKindReplicaSet 							 = "replicaset"
+	ResourceKindReplicationController 	 = "replicationcontroller"
+	ResourceKindResourceQuota						 = "resourcequota"
+	ResourceKindSecret     							 = "secret"
+	ResourceKindService    							 = "service"
+	ResourceKindStatefulSet							 = "statefulset"
+	ResourceKindStorageClass						 = "storageclass"
+	ResourceKindRbacRole								 = "role"
+	ResourceKindRbacClusterRole					 = "clusterrole"
+	ResourceKindRbacRoleBinding					 = "rolebinding"
+	ResourceKindRbacClusterRoleBinding	 = "clusterrolebinding"
+	ResourceKindEndpoint								 = "endpoint"
 )
 
 // ClientType represents type of client that is used to perform generic operations on resources.
@@ -105,6 +106,7 @@ const (
 	ClientTypeAppsClient        	= "appsclient"
 	ClientTypeBatchClient       	= "batchclient"
 	ClientTypeBetaBatchClient   	= "betabatchclient"
+	ClientTypeAutoscalingClient 	= "autoscalingclient"
 	ClientTypeStorageClient     	= "storageclient"
 )
 
@@ -121,6 +123,7 @@ var KindToAPIMapping = map[string]struct {
 	ResourceKindDaemonSet:               {"daemonsets", ClientTypeExtensionClient, true},
 	ResourceKindDeployment:              {"deployments", ClientTypeExtensionClient, true},
 	ResourceKindEvent:                   {"events", ClientTypeDefault, true},
+	ResourceKindHorizontalPodAutoscaler: {"horizontalpodautoscalers", ClientTypeAutoscalingClient, true},
 	ResourceKindIngress:                 {"ingresses", ClientTypeExtensionClient, true},
 	ResourceKindJob:                     {"jobs", ClientTypeBatchClient, true},
 	ResourceKindCronJob:                 {"cronjobs", ClientTypeBetaBatchClient, true},

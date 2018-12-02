@@ -7,6 +7,7 @@ import (
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/common"
 	ds "github.com/wzt3309/k8sconsole/src/app/backend/resource/dataselect"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/event"
+	hpa "github.com/wzt3309/k8sconsole/src/app/backend/resource/horizontalpodautoscaler"
 	"github.com/wzt3309/k8sconsole/src/app/backend/resource/pod"
 	resourceService "github.com/wzt3309/k8sconsole/src/app/backend/resource/service"
 	apps "k8s.io/api/apps/v1beta2"
@@ -41,6 +42,9 @@ type ReplicaSetDetail struct {
 
 	// Selector of this replica set.
 	Selector *metaV1.LabelSelector `json:"selector"`
+
+	// List of Horizontal Pod Autoscalers targeting this Replica Set.
+	HorizontalPodAutoscalerList hpa.HorizontalPodAutoscalerList `json:"horizontalPodAutoscalerList"`
 
 	// List of non-critical errors, that occurred during resource retrieval.
 	Errors []error `json:"errors"`
@@ -78,12 +82,19 @@ func GetReplicaSetDetail(client kubernetes.Interface, 	namespace, name string) (
 		return nil, criticalError
 	}
 
-	rsDetail := toReplicaSetDetail(rs, *eventList, *podList, *podInfo, *serviceList, nonCriticalErrors)
+	hpas, err := hpa.GetHorizontalPodAutoscalerListForResource(client, namespace, "ReplicaSet", name)
+	nonCriticalErrors, criticalError = errors.AppendError(err, nonCriticalErrors)
+	if criticalError != nil {
+		return nil, criticalError
+	}
+
+	rsDetail := toReplicaSetDetail(rs, *eventList, *podList, *podInfo, *serviceList, *hpas, nonCriticalErrors)
 	return &rsDetail, nil
 }
 
 func toReplicaSetDetail(replicaSet *apps.ReplicaSet, eventList common.EventList, podList pod.PodList,
-	podInfo common.PodInfo, serviceList resourceService.ServiceList, nonCriticalErrors []error) ReplicaSetDetail {
+	podInfo common.PodInfo, serviceList resourceService.ServiceList,
+	hpas hpa.HorizontalPodAutoscalerList, nonCriticalErrors []error) ReplicaSetDetail {
 
 	return ReplicaSetDetail{
 		ObjectMeta:                  api.NewObjectMeta(replicaSet.ObjectMeta),
@@ -95,6 +106,7 @@ func toReplicaSetDetail(replicaSet *apps.ReplicaSet, eventList common.EventList,
 		PodList:                     podList,
 		ServiceList:                 serviceList,
 		EventList:                   eventList,
+		HorizontalPodAutoscalerList: hpas,
 		Errors: nonCriticalErrors,
 	}
 }

@@ -820,4 +820,42 @@ GET http://localhost:9090/api/v1/overview/default
 Accept: application/json
 Cache-Control: no-cache
 
+############################################# Test scale ###########################################
+### Test /scale/{kind}/{namespace}/{name}
+PUT http://localhost:9090/api/v1/scale/deployment/default/nginx?scaleBy=2
+Content-Type: application/json
+Cache-Control: no-cach
+
+### Test /scale/{kind}/{namespace}/{name}
+GET http://localhost:9090/api/v1/scale/deployment/default/nginx
+Accept: application/json
+Cache-Control: no-cach
+
+############################################# Test horizontalpodautoscaler ###########################################
+### Test /horizontalpodautoscaler
+GET http://localhost:9090/api/v1/horizontalpodautoscaler
+Accept: application/json
+Cache-Control: no-cach
+
+### Test /horizontalpodautoscaler/{namespace}
+GET http://localhost:9090/api/v1/horizontalpodautoscaler/default
+Accept: application/json
+Cache-Control: no-cach
+
+### Test /horizontalpodautoscaler/{namespace}/{horizontalpodautoscaler}
+GET http://localhost:9090/api/v1/horizontalpodautoscaler/default/test
+Accept: application/json
+Cache-Control: no-cach
+
+############################################# Test sockjs ###########################################
+### Test /pod/{namespace}/{pod}/{shell}/{container}
+### kubectl run -i -t busybox --image=busybox --restart=Never
+GET http://localhost:9090/api/v1/pod/default/busybox/bash/busybox
+Accept: application/json
+Cache-Control: no-cach
+
 ###
+GET http://localhost:9090/api/sockjs
+Accept: application/json
+Cache-Control: no-cach
+
