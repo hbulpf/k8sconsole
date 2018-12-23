@@ -1,0 +1,19 @@
+<div style="text-align:center">
+  <h1>
+    Welcome to {{ title }}!
+  </h1>
+  <img width="300" alt="k8 Logo" src="/src/kubernetes-logo.png">
+</div>
+
+<a [routerLink]="['/']">home</a>
+<br/>
+<a [routerLink]="['/namespace']">namespace</a>
+<br/>
+<a [routerLink]="['/pod']">pod</a>
+<br/>
+<a [routerLink]="['/service']">service list</a>
+
+
+<router-outlet></router-outlet>
+
+<app-footer></app-footer>
